@@ -1,0 +1,54 @@
+{% extends "inventaris/base.html" %}
+{% load inventaris_tags %}
+
+{% block title %}Scan {{ aset.kode_aset }} — LabTrack{% endblock %}
+{% block page_title %}Kartu Scan Aset{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-md rounded-lg border border-line bg-white p-6">
+  <div class="border-b border-line pb-4">
+    <p class="font-mono text-xs font-semibold uppercase tracking-wider text-muted">{{ aset.kode_aset }}</p>
+    <h2 class="mt-1 text-lg font-bold text-ink">{{ aset.nama_aset }}</h2>
+    <p class="text-sm text-muted">{{ aset.merk_tipe }}</p>
+  </div>
+
+  <dl class="mt-4 space-y-3 text-sm">
+    <div class="flex items-center justify-between">
+      <dt class="text-muted">Lokasi</dt>
+      <dd class="font-medium text-ink">{{ aset.lokasi.kode_ruang }} &mdash; {{ aset.lokasi.nama_ruang }}</dd>
+    </div>
+    <div class="flex items-center justify-between">
+      <dt class="text-muted">Kategori</dt>
+      <dd class="font-medium text-ink">{{ aset.kategori.nama }}</dd>
+    </div>
+    <div class="flex items-center justify-between">
+      <dt class="text-muted">Kondisi</dt>
+      <dd>
+        <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium {{ aset.kondisi|badge_kondisi }}">
+          {{ aset.get_kondisi_display }}
+        </span>
+      </dd>
+    </div>
+    <div class="flex items-center justify-between">
+      <dt class="text-muted">Status</dt>
+      <dd>
+        <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium {{ aset.status|badge_status }}">
+          {{ aset.get_status_display }}
+        </span>
+      </dd>
+    </div>
+  </dl>
+
+  <div class="mt-6 space-y-2.5 border-t border-line pt-5">
+    <a href="{% url 'peminjaman_list' %}?aset={{ aset.pk }}" class="flex w-full min-h-[44px] items-center justify-center rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-stone-800">
+      Ajukan Pinjam
+    </a>
+    <a href="{% url 'kerusakan_list' %}?aset={{ aset.pk }}" class="flex w-full min-h-[44px] items-center justify-center rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-ink hover:bg-canvas">
+      Laporkan Kerusakan
+    </a>
+    <a href="{% url 'aset_detail' aset.pk %}" class="flex w-full min-h-[44px] items-center justify-center rounded-md text-xs font-medium text-muted hover:text-ink">
+      Lihat Detail Lengkap
+    </a>
+  </div>
+</div>
+{% endblock %}

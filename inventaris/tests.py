@@ -1,3 +1,4 @@
+import tempfile
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -5,7 +6,7 @@ from django.contrib.auth.models import User
 from django.contrib.messages import get_messages
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.http import HttpResponse
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -222,3 +223,111 @@ class LayoutAndDashboardTests(TestCase):
         for name in ['aset_list', 'peminjaman_list', 'kerusakan_list', 'pemeliharaan_list', 'laporan_penyusutan', 'kategori_list', 'lokasi_list']:
             with self.subTest(url_name=name):
                 self.assertEqual(self.client.get(reverse(name)).status_code, 200)
+
+
+class MasterAsetAndQRTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user('admin_lab', 'admin@example.com', 'AdminLab123!')
+        UserProfile.objects.create(
+            user=self.admin, role='ADMIN', nomor_identitas='NIP-001', unit_prodi='Lab Terpadu'
+        )
+        self.peminjam = User.objects.create_user('mhs_andi', 'andi@example.com', 'Peminjam123!')
+        UserProfile.objects.create(
+            user=self.peminjam, role='PEMINJAM', nomor_identitas='H071221001', unit_prodi='Sistem Informasi'
+        )
+        self.kategori = KategoriAset.objects.create(kode='KOM', nama='Komputer')
+        self.lokasi = LokasiLab.objects.create(
+            kode_ruang='LAB-RPL', nama_ruang='Lab RPL', gedung='Gedung A', penanggung_jawab='Admin'
+        )
+        self.aset = Aset.objects.create(
+            nama_aset='Workstation 01',
+            kategori=self.kategori,
+            lokasi=self.lokasi,
+            merk_tipe='Dell Precision',
+            tanggal_perolehan=date(2025, 1, 10),
+            harga_perolehan=Decimal('15000000'),
+            nilai_residu=Decimal('3000000'),
+            umur_ekonomis_tahun=5,
+        )
+
+    def test_kategori_and_lokasi_crud_and_protected_error(self):
+        self.client.force_login(self.admin)
+
+        # Tambah kategori baru
+        resp = self.client.post(reverse('kategori_create'), {
+            'kode': 'jar',
+            'nama': 'Jaringan',
+            'deskripsi': 'Switch dan router',
+        })
+        self.assertRedirects(resp, reverse('kategori_list'))
+        jar = KategoriAset.objects.get(kode='JAR')
+        self.assertEqual(jar.nama, 'Jaringan')
+
+        # Hapus kategori yang tidak terpakai berhasil
+        del_ok = self.client.post(reverse('kategori_delete', args=[jar.pk]))
+        self.assertRedirects(del_ok, reverse('kategori_list'))
+        self.assertFalse(KategoriAset.objects.filter(pk=jar.pk).exists())
+
+        # Hapus kategori & lokasi yang masih dipakai aset tertahan ProtectedError
+        del_kat = self.client.post(reverse('kategori_delete', args=[self.kategori.pk]), follow=True)
+        self.assertRedirects(del_kat, reverse('kategori_list'))
+        self.assertTrue(KategoriAset.objects.filter(pk=self.kategori.pk).exists())
+        self.assertContains(del_kat, 'tidak dapat dihapus')
+
+        del_lok = self.client.post(reverse('lokasi_delete', args=[self.lokasi.pk]), follow=True)
+        self.assertRedirects(del_lok, reverse('lokasi_list'))
+        self.assertTrue(LokasiLab.objects.filter(pk=self.lokasi.pk).exists())
+        self.assertContains(del_lok, 'tidak dapat dihapus')
+
+    def test_create_aset_generates_kode_and_qr_and_detail_scan_print(self):
+        with tempfile.TemporaryDirectory() as tmpdir, override_settings(MEDIA_ROOT=tmpdir):
+            self.client.force_login(self.admin)
+            resp = self.client.post(reverse('aset_create'), {
+                'kode_aset': '',
+                'nama_aset': 'Proyektor Laser',
+                'kategori': self.kategori.pk,
+                'lokasi': self.lokasi.pk,
+                'merk_tipe': 'Epson EB-L200',
+                'nomor_seri': 'SN-9988',
+                'spesifikasi': '4200 Lumens',
+                'tanggal_perolehan': '2026-01-15',
+                'harga_perolehan': '10000000',
+                'nilai_residu': '1000000',
+                'umur_ekonomis_tahun': '5',
+                'kondisi': 'BAIK',
+                'status': 'TERSEDIA',
+                'catatan': '',
+            })
+            created = Aset.objects.get(nama_aset='Proyektor Laser')
+            self.assertRedirects(resp, reverse('aset_detail', args=[created.pk]))
+            self.assertTrue(created.kode_aset.startswith('LAB-KOM-2026-'))
+            self.assertTrue(bool(created.qr_code))
+            self.assertTrue(created.qr_code.name.endswith(f'{created.kode_aset}.png'))
+
+            detail_resp = self.client.get(reverse('aset_detail', args=[created.pk]))
+            self.assertEqual(detail_resp.status_code, 200)
+            self.assertContains(detail_resp, created.kode_aset)
+            self.assertContains(detail_resp, 'Unduh PNG')
+
+            scan_resp = self.client.get(reverse('aset_scan', args=[created.kode_aset]))
+            self.assertEqual(scan_resp.status_code, 200)
+            self.assertContains(scan_resp, 'Ajukan Pinjam')
+
+            print_resp = self.client.get(reverse('aset_print_qr', args=[created.pk]))
+            self.assertEqual(print_resp.status_code, 200)
+            self.assertContains(print_resp, created.kode_aset)
+
+            massal_resp = self.client.get(reverse('aset_print_qr_massal'))
+            self.assertEqual(massal_resp.status_code, 200)
+            self.assertContains(massal_resp, self.aset.kode_aset)
+
+    def test_aset_search_filter_and_role_restriction(self):
+        self.client.force_login(self.peminjam)
+        list_resp = self.client.get(reverse('aset_list'), {'q': 'Workstation', 'kondisi': 'BAIK'})
+        self.assertEqual(list_resp.status_code, 200)
+        self.assertContains(list_resp, self.aset.kode_aset)
+        self.assertNotContains(list_resp, 'Tambah Aset')
+
+        # Peminjam tidak boleh membuat aset
+        blocked = self.client.get(reverse('aset_create'))
+        self.assertRedirects(blocked, reverse('dashboard'))

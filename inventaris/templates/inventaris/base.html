@@ -67,7 +67,7 @@
             </a>
           </li>
           <li>
-            <a href="{% url 'aset_list' %}" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors {% if active == 'aset_list' %}bg-canvas font-semibold text-ink border-l-2 border-ink{% else %}text-muted hover:bg-canvas/70 hover:text-ink{% endif %}">
+            <a href="{% url 'aset_list' %}" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors {% if 'aset_' in active %}bg-canvas font-semibold text-ink border-l-2 border-ink{% else %}text-muted hover:bg-canvas/70 hover:text-ink{% endif %}">
               <i data-lucide="boxes" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
               <span>Data Aset</span>
             </a>
@@ -104,13 +104,13 @@
         <p class="px-3 mb-2 font-mono text-[11px] font-medium uppercase tracking-wider text-muted">Master Data</p>
         <ul class="space-y-1">
           <li>
-            <a href="{% url 'kategori_list' %}" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors {% if active == 'kategori_list' %}bg-canvas font-semibold text-ink border-l-2 border-ink{% else %}text-muted hover:bg-canvas/70 hover:text-ink{% endif %}">
+            <a href="{% url 'kategori_list' %}" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors {% if 'kategori_' in active %}bg-canvas font-semibold text-ink border-l-2 border-ink{% else %}text-muted hover:bg-canvas/70 hover:text-ink{% endif %}">
               <i data-lucide="tags" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
               <span>Kategori Barang</span>
             </a>
           </li>
           <li>
-            <a href="{% url 'lokasi_list' %}" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors {% if active == 'lokasi_list' %}bg-canvas font-semibold text-ink border-l-2 border-ink{% else %}text-muted hover:bg-canvas/70 hover:text-ink{% endif %}">
+            <a href="{% url 'lokasi_list' %}" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors {% if 'lokasi_' in active %}bg-canvas font-semibold text-ink border-l-2 border-ink{% else %}text-muted hover:bg-canvas/70 hover:text-ink{% endif %}">
               <i data-lucide="map-pin" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
               <span>Lokasi Laboratorium</span>
             </a>
