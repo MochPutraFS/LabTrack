@@ -1,13 +1,18 @@
+from datetime import date, timedelta
+from decimal import Decimal
+
 from django.contrib.auth.models import User
 from django.contrib.messages import get_messages
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.http import HttpResponse
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from .context_processors import user_context
 from .decorators import role_required
-from .models import UserProfile
+from .models import Aset, JadwalPemeliharaan, KategoriAset, LaporanKerusakan, LokasiLab, Peminjaman, UserProfile
+from .templatetags.inventaris_tags import badge_kondisi, badge_status, rupiah
 
 
 @role_required('ADMIN')
@@ -113,3 +118,107 @@ class AuthAndRBACTests(TestCase):
         ctx = user_context(req)
         self.assertEqual(ctx['user_role'], 'ADMIN')
         self.assertIsNone(ctx['user_profile'])
+
+
+class LayoutAndDashboardTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user('admin_lab', 'admin@example.com', 'AdminLab123!')
+        UserProfile.objects.create(
+            user=self.admin, role='ADMIN', nomor_identitas='NIP-001', unit_prodi='Lab Terpadu'
+        )
+        self.peminjam = User.objects.create_user('mhs_andi', 'andi@example.com', 'Peminjam123!')
+        UserProfile.objects.create(
+            user=self.peminjam, role='PEMINJAM', nomor_identitas='H071221001', unit_prodi='Sistem Informasi'
+        )
+
+        self.kategori = KategoriAset.objects.create(kode='KOM', nama='Komputer')
+        self.lokasi = LokasiLab.objects.create(
+            kode_ruang='LAB-01', nama_ruang='Lab Komputasi', gedung='Gedung A', penanggung_jawab='Admin'
+        )
+        today = timezone.localdate()
+        self.aset1 = Aset.objects.create(
+            nama_aset='PC Workstation 01',
+            kategori=self.kategori,
+            lokasi=self.lokasi,
+            merk_tipe='Dell Precision',
+            tanggal_perolehan=date(today.year, 1, 1),
+            harga_perolehan=Decimal('12500000'),
+            nilai_residu=Decimal('2500000'),
+            umur_ekonomis_tahun=5,
+            kondisi='BAIK',
+            status='TERSEDIA',
+        )
+        self.aset2 = Aset.objects.create(
+            nama_aset='Oscilloscope Digital',
+            kategori=self.kategori,
+            lokasi=self.lokasi,
+            merk_tipe='Rigol DS1054Z',
+            tanggal_perolehan=date(today.year, 1, 1),
+            harga_perolehan=Decimal('6000000'),
+            nilai_residu=Decimal('1000000'),
+            umur_ekonomis_tahun=5,
+            kondisi='RUSAK_RINGAN',
+            status='DIPINJAM',
+        )
+        Peminjaman.objects.create(
+            kode_peminjaman='PJM-001',
+            aset=self.aset2,
+            peminjam=self.peminjam,
+            tanggal_pinjam=today,
+            tanggal_rencana_kembali=today + timedelta(days=3),
+            keperluan='Praktikum',
+            status='MENUNGGU',
+        )
+        LaporanKerusakan.objects.create(
+            kode_laporan='KRS-001',
+            aset=self.aset2,
+            pelapor=self.peminjam,
+            judul_kerusakan='Probe longgar',
+            deskripsi='Konektor probe channel 1 longgar',
+            status='DILAPORKAN',
+        )
+        JadwalPemeliharaan.objects.create(
+            kode_jadwal='JDL-001',
+            aset=self.aset1,
+            jenis='PREVENTIF',
+            tanggal_jadwal=today + timedelta(days=5),
+            deskripsi_kegiatan='Pembersihan rutin',
+            status='TERJADWAL',
+        )
+
+    def test_template_filters(self):
+        self.assertEqual(rupiah(Decimal('12500000')), 'Rp 12.500.000')
+        self.assertEqual(rupiah(None), 'Rp 0')
+        self.assertEqual(rupiah(-5000), '-Rp 5.000')
+        self.assertIn('emerald', badge_kondisi('BAIK'))
+        self.assertIn('amber', badge_kondisi('RUSAK_RINGAN'))
+        self.assertIn('red', badge_status('DITOLAK'))
+
+    def test_dashboard_renders_kpis_charts_and_sidebar_by_role(self):
+        self.client.force_login(self.admin)
+        resp = self.client.get(reverse('dashboard'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context['total_aset'], 2)
+        self.assertEqual(resp.context['aset_tersedia'], 1)
+        self.assertEqual(resp.context['aset_dipinjam'], 1)
+        self.assertEqual(resp.context['kerusakan_aktif'], 1)
+        self.assertEqual(resp.context['pemeliharaan_mendatang'], 1)
+        self.assertContains(resp, 'id="kondisi-chart-data"')
+        self.assertContains(resp, 'id="kategori-chart-data"')
+        self.assertContains(resp, 'Kategori Barang')
+        self.assertContains(resp, 'PJM-001')
+        self.assertContains(resp, 'JDL-001')
+
+        # Non-admin tidak melihat menu Master Data dan diblokir dari /kategori/
+        self.client.force_login(self.peminjam)
+        resp_user = self.client.get(reverse('dashboard'))
+        self.assertEqual(resp_user.status_code, 200)
+        self.assertNotContains(resp_user, 'Kategori Barang')
+        blocked = self.client.get(reverse('kategori_list'))
+        self.assertRedirects(blocked, reverse('dashboard'))
+
+    def test_sidebar_placeholder_routes_accessible(self):
+        self.client.force_login(self.admin)
+        for name in ['aset_list', 'peminjaman_list', 'kerusakan_list', 'pemeliharaan_list', 'laporan_penyusutan', 'kategori_list', 'lokasi_list']:
+            with self.subTest(url_name=name):
+                self.assertEqual(self.client.get(reverse(name)).status_code, 200)

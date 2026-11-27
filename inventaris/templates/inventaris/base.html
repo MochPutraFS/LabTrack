@@ -1,0 +1,236 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}LabTrack — Sistem Inventaris Laboratorium{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            canvas: '#F5F4F0',
+            ink: '#1C1917',
+            muted: '#57534E',
+            line: '#DCD9D2',
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+  <script src="https://unpkg.com/lucide@latest" defer></script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-canvas font-sans text-ink antialiased selection:bg-ink selection:text-white">
+  <!-- Mobile Drawer Backdrop -->
+  <div id="sidebar-backdrop" class="fixed inset-0 z-30 hidden bg-ink/30 lg:hidden print:hidden" aria-hidden="true"></div>
+
+  <!-- Sidebar Kiri (256px) -->
+  <aside
+    id="app-sidebar"
+    aria-label="Navigasi Utama"
+    class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-line bg-white transition-transform duration-200 lg:translate-x-0 print:hidden"
+  >
+    <div class="flex h-16 items-center justify-between border-b border-line px-5">
+      <a href="{% url 'dashboard' %}" class="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink rounded">
+        <span class="block text-base font-bold tracking-tight text-ink leading-none">LabTrack</span>
+        <span class="mt-1 block text-[11px] text-muted">Sistem Inventaris Laboratorium</span>
+      </a>
+      <button
+        type="button"
+        id="sidebar-close-btn"
+        aria-label="Tutup menu navigasi"
+        class="rounded-md p-1.5 text-muted hover:bg-canvas hover:text-ink lg:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
+      >
+        <i data-lucide="x" class="h-4 w-4" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+      {% with active=request.resolver_match.url_name %}
+      <div>
+        <p class="px-3 mb-2 font-mono text-[11px] font-medium uppercase tracking-wider text-muted">Menu Utama</p>
+        <ul class="space-y-1">
+          <li>
+            <a href="{% url 'dashboard' %}" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors {% if active == 'dashboard' %}bg-canvas font-semibold text-ink border-l-2 border-ink{% else %}text-muted hover:bg-canvas/70 hover:text-ink{% endif %}">
+              <i data-lucide="layout-dashboard" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
+              <span>Dashboard</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'aset_list' %}" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors {% if active == 'aset_list' %}bg-canvas font-semibold text-ink border-l-2 border-ink{% else %}text-muted hover:bg-canvas/70 hover:text-ink{% endif %}">
+              <i data-lucide="boxes" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
+              <span>Data Aset</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'peminjaman_list' %}" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors {% if active == 'peminjaman_list' %}bg-canvas font-semibold text-ink border-l-2 border-ink{% else %}text-muted hover:bg-canvas/70 hover:text-ink{% endif %}">
+              <i data-lucide="arrow-left-right" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
+              <span>Peminjaman</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'kerusakan_list' %}" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors {% if active == 'kerusakan_list' %}bg-canvas font-semibold text-ink border-l-2 border-ink{% else %}text-muted hover:bg-canvas/70 hover:text-ink{% endif %}">
+              <i data-lucide="alert-triangle" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
+              <span>Laporan Kerusakan</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'pemeliharaan_list' %}" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors {% if active == 'pemeliharaan_list' %}bg-canvas font-semibold text-ink border-l-2 border-ink{% else %}text-muted hover:bg-canvas/70 hover:text-ink{% endif %}">
+              <i data-lucide="wrench" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
+              <span>Jadwal Pemeliharaan</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'laporan_penyusutan' %}" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors {% if active == 'laporan_penyusutan' %}bg-canvas font-semibold text-ink border-l-2 border-ink{% else %}text-muted hover:bg-canvas/70 hover:text-ink{% endif %}">
+              <i data-lucide="file-bar-chart" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
+              <span>Laporan &amp; Penyusutan</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      {% if user_role == 'ADMIN' %}
+      <div>
+        <p class="px-3 mb-2 font-mono text-[11px] font-medium uppercase tracking-wider text-muted">Master Data</p>
+        <ul class="space-y-1">
+          <li>
+            <a href="{% url 'kategori_list' %}" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors {% if active == 'kategori_list' %}bg-canvas font-semibold text-ink border-l-2 border-ink{% else %}text-muted hover:bg-canvas/70 hover:text-ink{% endif %}">
+              <i data-lucide="tags" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
+              <span>Kategori Barang</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'lokasi_list' %}" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors {% if active == 'lokasi_list' %}bg-canvas font-semibold text-ink border-l-2 border-ink{% else %}text-muted hover:bg-canvas/70 hover:text-ink{% endif %}">
+              <i data-lucide="map-pin" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
+              <span>Lokasi Laboratorium</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+      {% endif %}
+      {% endwith %}
+    </nav>
+
+    <div class="border-t border-line px-4 py-3 text-xs text-muted">
+      <p class="font-mono text-[11px]">WITA (UTC+8)</p>
+    </div>
+  </aside>
+
+  <!-- Konten Utama -->
+  <div class="flex min-h-screen flex-col lg:pl-64 print:pl-0">
+    <!-- Topbar -->
+    <header class="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-line bg-white px-4 sm:px-6 lg:px-8 print:hidden">
+      <div class="flex items-center gap-3 min-w-0">
+        <button
+          type="button"
+          id="sidebar-open-btn"
+          aria-label="Buka menu navigasi"
+          aria-controls="app-sidebar"
+          aria-expanded="false"
+          class="rounded-md border border-line p-2 text-ink hover:bg-canvas lg:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
+        >
+          <i data-lucide="menu" class="h-4 w-4" aria-hidden="true"></i>
+        </button>
+        <div class="min-w-0">
+          <h1 class="truncate text-base sm:text-lg font-semibold tracking-tight text-ink">
+            {% block page_title %}Dashboard{% endblock %}
+          </h1>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 sm:gap-4 shrink-0">
+        <span class="hidden md:inline-block font-mono text-xs text-muted">
+          {% now "d M Y, H:i" %} WITA
+        </span>
+        <div class="hidden sm:block text-right">
+          <p class="text-sm font-medium text-ink leading-tight">{{ request.user.get_full_name|default:request.user.username }}</p>
+        </div>
+        {% if user_role %}
+        <span class="inline-flex items-center rounded border border-line bg-canvas px-2 py-0.5 font-mono text-[11px] font-medium uppercase tracking-wider text-ink">
+          {{ user_role }}
+        </span>
+        {% endif %}
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button
+            type="submit"
+            class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
+          >
+            <i data-lucide="log-out" class="h-3.5 w-3.5" aria-hidden="true"></i>
+            <span class="hidden sm:inline">Keluar</span>
+          </button>
+        </form>
+      </div>
+    </header>
+
+    <!-- Main Area -->
+    <main class="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+      {% if messages %}
+      <div id="flash-messages" class="mb-6 space-y-2 print:hidden" aria-live="polite">
+        {% for message in messages %}
+        <div
+          role="status"
+          class="flash-item flex items-start justify-between gap-3 rounded-md border px-4 py-3 text-sm {% if message.tags == 'error' %}border-red-200 bg-red-50 text-red-900{% elif message.tags == 'warning' %}border-amber-200 bg-amber-50 text-amber-900{% elif message.tags == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-900{% else %}border-line bg-white text-ink{% endif %}"
+        >
+          <span>{{ message }}</span>
+          <button
+            type="button"
+            aria-label="Tutup pesan"
+            class="flash-close shrink-0 cursor-pointer rounded p-0.5 opacity-70 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
+          >
+            <i data-lucide="x" class="h-4 w-4" aria-hidden="true"></i>
+          </button>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+
+      const sidebar = document.getElementById('app-sidebar');
+      const backdrop = document.getElementById('sidebar-backdrop');
+      const openBtn = document.getElementById('sidebar-open-btn');
+      const closeBtn = document.getElementById('sidebar-close-btn');
+
+      const setDrawer = (open) => {
+        if (!sidebar || !backdrop || !openBtn) return;
+        sidebar.classList.toggle('-translate-x-full', !open);
+        backdrop.classList.toggle('hidden', !open);
+        openBtn.setAttribute('aria-expanded', String(open));
+      };
+
+      openBtn?.addEventListener('click', () => setDrawer(true));
+      closeBtn?.addEventListener('click', () => setDrawer(false));
+      backdrop?.addEventListener('click', () => setDrawer(false));
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') setDrawer(false);
+      });
+
+      document.querySelectorAll('.flash-close').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          btn.closest('.flash-item')?.remove();
+        });
+      });
+    });
+  </script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>
