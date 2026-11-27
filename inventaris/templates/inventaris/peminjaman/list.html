@@ -1,0 +1,126 @@
+{% extends "inventaris/base.html" %}
+{% load inventaris_tags %}
+
+{% block title %}Peminjaman Aset — LabTrack{% endblock %}
+{% block page_title %}Peminjaman &amp; Pengembalian{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+  <!-- Header Aksi & Filter Tab Status -->
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <nav aria-label="Filter status peminjaman" class="flex flex-wrap items-center gap-1.5">
+      <a href="{% url 'peminjaman_list' %}" class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors {% if not status_filter %}bg-ink text-white{% else %}border border-line bg-white text-muted hover:text-ink{% endif %}">
+        Semua
+      </a>
+      {% for val, label in status_choices %}
+      <a href="?status={{ val }}" class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors {% if status_filter == val %}bg-ink text-white{% else %}border border-line bg-white text-muted hover:text-ink{% endif %}">
+        {{ label }}
+      </a>
+      {% endfor %}
+    </nav>
+
+    <a href="{% url 'peminjaman_ajukan' %}" class="inline-flex items-center gap-1.5 rounded-md bg-ink px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-stone-800">
+      <i data-lucide="plus" class="h-4 w-4" aria-hidden="true"></i>
+      <span>Ajukan Peminjaman</span>
+    </a>
+  </div>
+
+  <!-- Tabel Peminjaman -->
+  <div class="overflow-hidden rounded-lg border border-line bg-white">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead class="border-b border-line bg-canvas text-xs uppercase tracking-wider text-muted">
+          <tr>
+            <th scope="col" class="px-4 py-3 font-medium">Kode</th>
+            <th scope="col" class="px-4 py-3 font-medium">Aset</th>
+            {% if user_role == 'ADMIN' or user_role == 'TEKNISI' %}
+            <th scope="col" class="px-4 py-3 font-medium">Peminjam</th>
+            {% endif %}
+            <th scope="col" class="px-4 py-3 font-medium">Pinjam &ndash; Rencana Kembali</th>
+            <th scope="col" class="px-4 py-3 font-medium">Status</th>
+            {% if user_role == 'ADMIN' %}
+            <th scope="col" class="px-4 py-3 font-medium text-right">Aksi</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line">
+          {% for p in page_obj %}
+          <tr class="hover:bg-canvas/60">
+            <td class="px-4 py-3 font-mono text-xs font-semibold text-ink whitespace-nowrap">{{ p.kode_peminjaman }}</td>
+            <td class="px-4 py-3">
+              <a href="{% url 'aset_detail' p.aset.pk %}" class="font-medium text-ink hover:underline">{{ p.aset.nama_aset }}</a>
+              <span class="block font-mono text-[11px] text-muted">{{ p.aset.kode_aset }}</span>
+            </td>
+            {% if user_role == 'ADMIN' or user_role == 'TEKNISI' %}
+            <td class="px-4 py-3 text-ink whitespace-nowrap">{{ p.peminjam.get_full_name|default:p.peminjam.username }}</td>
+            {% endif %}
+            <td class="px-4 py-3 font-mono text-xs text-muted whitespace-nowrap">
+              {{ p.tanggal_pinjam|date:"d M Y" }} &rarr; {{ p.tanggal_rencana_kembali|date:"d M Y" }}
+              {% if p.tanggal_kembali_aktual %}
+              <span class="block text-[11px] text-emerald-800">Kembali: {{ p.tanggal_kembali_aktual|date:"d M Y" }}</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              <div class="inline-flex flex-wrap items-center gap-1.5">
+                <span class="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium {{ p.status|badge_status }}">
+                  {{ p.get_status_display }}
+                </span>
+                {% if p.status == 'DISETUJUI' and p.tanggal_rencana_kembali < today %}
+                <span class="inline-flex items-center rounded border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-800">
+                  Terlambat
+                </span>
+                {% endif %}
+              </div>
+              {% if p.catatan_admin %}
+              <p class="mt-1 max-w-xs truncate text-[11px] text-muted" title="{{ p.catatan_admin }}">{{ p.catatan_admin }}</p>
+              {% endif %}
+            </td>
+            {% if user_role == 'ADMIN' %}
+            <td class="px-4 py-3 text-right whitespace-nowrap">
+              {% if p.status == 'MENUNGGU' %}
+              <div class="inline-flex items-center gap-1.5">
+                <form method="post" action="{% url 'peminjaman_setujui' p.pk %}">
+                  {% csrf_token %}
+                  <button type="submit" class="cursor-pointer rounded bg-ink px-2.5 py-1 text-xs font-medium text-white hover:bg-stone-800">
+                    Setujui
+                  </button>
+                </form>
+                <a href="{% url 'peminjaman_tolak' p.pk %}" class="rounded border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-800 hover:bg-red-100">
+                  Tolak
+                </a>
+              </div>
+              {% elif p.status == 'DISETUJUI' %}
+              <a href="{% url 'peminjaman_kembalikan' p.pk %}" class="rounded border border-stone-300 bg-white px-2.5 py-1 text-xs font-medium text-ink hover:bg-canvas">
+                Proses Kembali
+              </a>
+              {% else %}
+              <span class="text-xs text-muted">-</span>
+              {% endif %}
+            </td>
+            {% endif %}
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="px-4 py-10 text-center text-sm text-muted">Belum ada data peminjaman pada filter ini.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="flex items-center justify-between border-t border-line px-4 py-3 text-xs text-muted">
+      <span>Halaman <span class="font-mono text-ink">{{ page_obj.number }}</span> dari <span class="font-mono text-ink">{{ page_obj.paginator.num_pages }}</span></span>
+      <div class="flex items-center gap-2">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="rounded border border-stone-300 bg-white px-3 py-1.5 font-medium text-ink hover:bg-canvas">Sebelumnya</a>
+        {% endif %}
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="rounded border border-stone-300 bg-white px-3 py-1.5 font-medium text-ink hover:bg-canvas">Berikutnya</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

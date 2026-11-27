@@ -1,0 +1,63 @@
+{% extends "inventaris/base.html" %}
+
+{% block title %}Cetak Label QR — LabTrack{% endblock %}
+{% block page_title %}{% if single_aset %}Cetak Label: {{ single_aset.kode_aset }}{% else %}Cetak Label QR Massal{% endif %}{% endblock %}
+
+{% block extra_head %}
+<style>
+  @media print {
+    body {
+      background: #FFFFFF !important;
+    }
+    .label-card {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+  <div class="flex flex-wrap items-center justify-between gap-3 print:hidden">
+    <p class="text-sm text-muted">
+      Menyiapkan <span class="font-mono font-medium text-ink">{{ asets|length }}</span> stiker label inventaris siap cetak.
+    </p>
+    <div class="flex items-center gap-2">
+      <a href="{% if single_aset %}{% url 'aset_detail' single_aset.pk %}{% else %}{% url 'aset_list' %}{% endif %}" class="rounded-md border border-stone-300 bg-white px-3.5 py-2 text-sm font-medium text-ink hover:bg-canvas">
+        Kembali
+      </a>
+      <button type="button" id="print-labels-btn" class="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-stone-800">
+        <i data-lucide="printer" class="h-4 w-4" aria-hidden="true"></i>
+        <span>Cetak Label</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 print:grid-cols-2 print:gap-3">
+    {% for a in asets %}
+    <article class="label-card flex items-center justify-between gap-4 rounded-md border border-ink bg-white p-4">
+      <div class="min-w-0 flex-1">
+        <p class="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted">LabTrack &middot; {{ a.lokasi.kode_ruang }}</p>
+        <p class="mt-1 font-mono text-sm font-bold text-ink truncate">{{ a.kode_aset }}</p>
+        <p class="mt-1 text-sm font-semibold text-ink leading-snug line-clamp-2">{{ a.nama_aset }}</p>
+        <p class="mt-1 text-xs text-muted truncate">{{ a.lokasi.nama_ruang }}</p>
+      </div>
+      {% if a.qr_code %}
+      <img src="{{ a.qr_code.url }}" alt="QR {{ a.kode_aset }}" class="h-24 w-24 shrink-0 border border-line p-1 bg-white">
+      {% endif %}
+    </article>
+    {% empty %}
+    <p class="col-span-full text-sm text-muted">Belum ada aset untuk dicetak.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.getElementById('print-labels-btn')?.addEventListener('click', () => {
+    window.print();
+  });
+</script>
+{% endblock %}

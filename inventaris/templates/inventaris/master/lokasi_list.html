@@ -1,0 +1,56 @@
+{% extends "inventaris/base.html" %}
+
+{% block title %}Lokasi Laboratorium — LabTrack{% endblock %}
+{% block page_title %}Lokasi Laboratorium{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <p class="text-sm text-muted">Daftar ruangan laboratorium tempat aset ditempatkan.</p>
+    <a href="{% url 'lokasi_create' %}" class="inline-flex items-center gap-1.5 rounded-md bg-ink px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-stone-800">
+      <i data-lucide="plus" class="h-4 w-4" aria-hidden="true"></i>
+      <span>Tambah Lokasi</span>
+    </a>
+  </div>
+
+  <div class="overflow-hidden rounded-lg border border-line bg-white">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead class="border-b border-line bg-canvas text-xs uppercase tracking-wider text-muted">
+          <tr>
+            <th scope="col" class="px-4 py-3 font-medium">Kode Ruang</th>
+            <th scope="col" class="px-4 py-3 font-medium">Nama Ruang</th>
+            <th scope="col" class="px-4 py-3 font-medium">Gedung</th>
+            <th scope="col" class="px-4 py-3 font-medium">Penanggung Jawab</th>
+            <th scope="col" class="px-4 py-3 font-medium text-right">Kapasitas</th>
+            <th scope="col" class="px-4 py-3 font-medium text-right">Aset</th>
+            <th scope="col" class="px-4 py-3 font-medium text-right">Aksi</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line">
+          {% for l in lokasis %}
+          <tr class="hover:bg-canvas/60">
+            <td class="px-4 py-3 font-mono text-xs font-semibold text-ink whitespace-nowrap">{{ l.kode_ruang }}</td>
+            <td class="px-4 py-3 font-medium text-ink">{{ l.nama_ruang }}</td>
+            <td class="px-4 py-3 text-muted">{{ l.gedung }}</td>
+            <td class="px-4 py-3 text-muted">{{ l.penanggung_jawab }}</td>
+            <td class="px-4 py-3 text-right font-mono tabular-nums text-muted">{{ l.kapasitas }}</td>
+            <td class="px-4 py-3 text-right font-mono tabular-nums text-ink">{{ l.jumlah_aset }}</td>
+            <td class="px-4 py-3 text-right whitespace-nowrap">
+              <div class="inline-flex items-center gap-2">
+                <a href="{% url 'lokasi_edit' l.pk %}" class="rounded border border-stone-300 bg-white px-2.5 py-1 text-xs font-medium text-ink hover:bg-canvas">Edit</a>
+                <a href="{% url 'lokasi_delete' l.pk %}" class="rounded border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-800 hover:bg-red-100">Hapus</a>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="px-4 py-8 text-center text-sm text-muted">Belum ada lokasi laboratorium terdaftar.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

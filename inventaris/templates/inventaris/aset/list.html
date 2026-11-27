@@ -1,0 +1,171 @@
+{% extends "inventaris/base.html" %}
+{% load inventaris_tags %}
+
+{% block title %}Data Aset — LabTrack{% endblock %}
+{% block page_title %}Data Aset{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+  <!-- Header Aksi -->
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <p class="text-sm text-muted">
+      Menampilkan <span class="font-mono font-medium text-ink">{{ page_obj.paginator.count }}</span> aset terdaftar.
+    </p>
+    <div class="flex flex-wrap items-center gap-2">
+      <a href="{% url 'aset_print_qr_massal' %}" class="inline-flex items-center gap-1.5 rounded-md border border-stone-300 bg-white px-3.5 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas">
+        <i data-lucide="qr-code" class="h-4 w-4" aria-hidden="true"></i>
+        <span>Cetak QR Massal</span>
+      </a>
+      {% if user_role == 'ADMIN' %}
+      <a href="{% url 'aset_create' %}" class="inline-flex items-center gap-1.5 rounded-md bg-ink px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-stone-800">
+        <i data-lucide="plus" class="h-4 w-4" aria-hidden="true"></i>
+        <span>Tambah Aset</span>
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Pencarian & Filter -->
+  <search>
+    <form method="get" class="rounded-lg border border-line bg-white p-4">
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+        <div class="lg:col-span-2">
+          <label for="filter-q" class="sr-only">Cari aset</label>
+          <input
+            type="search"
+            id="filter-q"
+            name="q"
+            value="{{ filters.q }}"
+            placeholder="Cari kode, nama, atau merk..."
+            class="block w-full min-h-[40px] rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-ink placeholder:text-stone-400 focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/15"
+          >
+        </div>
+
+        <div>
+          <label for="filter-kategori" class="sr-only">Kategori</label>
+          <select id="filter-kategori" name="kategori" class="block w-full min-h-[40px] rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/15">
+            <option value="">Semua Kategori</option>
+            {% for k in kategoris %}
+            <option value="{{ k.pk }}" {% if filters.kategori == k.pk|stringformat:"s" %}selected{% endif %}>{{ k.nama }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label for="filter-lokasi" class="sr-only">Lokasi</label>
+          <select id="filter-lokasi" name="lokasi" class="block w-full min-h-[40px] rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/15">
+            <option value="">Semua Lokasi</option>
+            {% for l in lokasis %}
+            <option value="{{ l.pk }}" {% if filters.lokasi == l.pk|stringformat:"s" %}selected{% endif %}>{{ l.nama_ruang }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label for="filter-kondisi" class="sr-only">Kondisi</label>
+          <select id="filter-kondisi" name="kondisi" class="block w-full min-h-[40px] rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/15">
+            <option value="">Semua Kondisi</option>
+            {% for val, label in kondisi_choices %}
+            <option value="{{ val }}" {% if filters.kondisi == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="flex gap-2">
+          <select id="filter-status" name="status" aria-label="Status" class="block w-full min-h-[40px] rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/15">
+            <option value="">Semua Status</option>
+            {% for val, label in status_choices %}
+            <option value="{{ val }}" {% if filters.status == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="shrink-0 cursor-pointer rounded-md bg-ink px-3.5 py-2 text-sm font-medium text-white hover:bg-stone-800">
+            Filter
+          </button>
+        </div>
+      </div>
+      {% if filters.q or filters.kategori or filters.lokasi or filters.kondisi or filters.status %}
+      <div class="mt-2.5">
+        <a href="{% url 'aset_list' %}" class="text-xs font-medium text-muted hover:text-ink">Reset filter</a>
+      </div>
+      {% endif %}
+    </form>
+  </search>
+
+  <!-- Tabel Data Aset -->
+  <div class="overflow-hidden rounded-lg border border-line bg-white">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead class="border-b border-line bg-canvas text-xs uppercase tracking-wider text-muted">
+          <tr>
+            <th scope="col" class="px-4 py-3 font-medium">Kode Aset</th>
+            <th scope="col" class="px-4 py-3 font-medium">Nama &amp; Merk</th>
+            <th scope="col" class="px-4 py-3 font-medium">Kategori</th>
+            <th scope="col" class="px-4 py-3 font-medium">Lokasi</th>
+            <th scope="col" class="px-4 py-3 font-medium">Kondisi</th>
+            <th scope="col" class="px-4 py-3 font-medium">Status</th>
+            <th scope="col" class="px-4 py-3 font-medium text-right">Nilai Buku</th>
+            <th scope="col" class="px-4 py-3 font-medium text-right">Aksi</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line">
+          {% for a in page_obj %}
+          <tr class="hover:bg-canvas/60">
+            <td class="px-4 py-3 font-mono text-xs font-semibold text-ink whitespace-nowrap">
+              <a href="{% url 'aset_detail' a.pk %}" class="hover:underline">{{ a.kode_aset }}</a>
+            </td>
+            <td class="px-4 py-3">
+              <a href="{% url 'aset_detail' a.pk %}" class="font-medium text-ink hover:underline">{{ a.nama_aset }}</a>
+              <span class="block text-xs text-muted">{{ a.merk_tipe }}</span>
+            </td>
+            <td class="px-4 py-3 text-muted whitespace-nowrap">{{ a.kategori.nama }}</td>
+            <td class="px-4 py-3 text-muted whitespace-nowrap">{{ a.lokasi.kode_ruang }}</td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              <span class="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium {{ a.kondisi|badge_kondisi }}">
+                {{ a.get_kondisi_display }}
+              </span>
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              <span class="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium {{ a.status|badge_status }}">
+                {{ a.get_status_display }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-right font-mono text-xs tabular-nums text-ink whitespace-nowrap">
+              {{ a.nilai_buku|rupiah }}
+            </td>
+            <td class="px-4 py-3 text-right whitespace-nowrap">
+              <div class="inline-flex items-center gap-1.5">
+                <a href="{% url 'aset_detail' a.pk %}" class="rounded border border-stone-300 bg-white px-2.5 py-1 text-xs font-medium text-ink hover:bg-canvas">Detail</a>
+                {% if user_role == 'ADMIN' %}
+                <a href="{% url 'aset_edit' a.pk %}" class="rounded border border-stone-300 bg-white px-2.5 py-1 text-xs font-medium text-ink hover:bg-canvas">Edit</a>
+                <a href="{% url 'aset_delete' a.pk %}" class="rounded border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-800 hover:bg-red-100">Hapus</a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" class="px-4 py-10 text-center text-sm text-muted">
+              Tidak ada aset yang sesuai dengan pencarian atau filter.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="flex items-center justify-between border-t border-line px-4 py-3 text-xs text-muted">
+      <span>Halaman <span class="font-mono text-ink">{{ page_obj.number }}</span> dari <span class="font-mono text-ink">{{ page_obj.paginator.num_pages }}</span></span>
+      <div class="flex items-center gap-2">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}{% if query_string %}&{{ query_string }}{% endif %}" class="rounded border border-stone-300 bg-white px-3 py-1.5 font-medium text-ink hover:bg-canvas">Sebelumnya</a>
+        {% endif %}
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if query_string %}&{{ query_string }}{% endif %}" class="rounded border border-stone-300 bg-white px-3 py-1.5 font-medium text-ink hover:bg-canvas">Berikutnya</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

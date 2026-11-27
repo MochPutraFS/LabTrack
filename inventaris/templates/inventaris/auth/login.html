@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Masuk — LabTrack</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            canvas: '#F5F4F0',
+            ink: '#1C1917',
+            muted: '#57534E',
+            line: '#DCD9D2',
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+  <script src="https://unpkg.com/lucide@latest" defer></script>
+  <style>
+    .visually-hidden:where(:not(:focus-within, :active)) {
+      position: absolute !important;
+      clip-path: inset(50%) !important;
+      overflow: hidden !important;
+      width: 1px !important;
+      height: 1px !important;
+      margin: -1px !important;
+      padding: 0 !important;
+      border: 0 !important;
+      white-space: nowrap !important;
+    }
+
+    .client-error-msg {
+      display: none;
+    }
+
+    input:is(:user-invalid, .user-invalid-fallback) {
+      border-color: #B91C1C;
+      background-color: #FEF2F2;
+    }
+
+    .field-group:has(input:is(:user-invalid, .user-invalid-fallback)) .client-error-msg {
+      display: block;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-canvas font-sans text-ink antialiased selection:bg-ink selection:text-white">
+  <main class="flex min-h-screen flex-col items-center justify-center px-4 py-12">
+    <div class="w-full max-w-[390px]">
+      <!-- Wordmark -->
+      <div class="mb-7">
+        <p class="text-lg font-bold tracking-tight text-ink">LabTrack</p>
+        <p class="mt-0.5 text-sm text-muted">Sistem Inventaris Laboratorium</p>
+      </div>
+
+      <!-- Surface Form -->
+      <div class="rounded-lg border border-line bg-white p-6 sm:p-7">
+        <h1 class="text-xl font-semibold tracking-tight text-ink">Masuk</h1>
+        <p class="mt-1 text-sm text-muted">Gunakan username dan password akun Anda.</p>
+
+        <!-- Flash Messages -->
+        {% if messages %}
+        <div class="mt-5 space-y-2" aria-live="polite">
+          {% for message in messages %}
+          <div role="status" class="rounded-md border px-3.5 py-2.5 text-sm {% if message.tags == 'error' %}border-red-200 bg-red-50 text-red-800{% elif message.tags == 'warning' %}border-amber-200 bg-amber-50 text-amber-900{% elif message.tags == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-900{% else %}border-line bg-canvas text-ink{% endif %}">
+            {{ message }}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Error Summary Server-Side -->
+        {% if error_message %}
+        <div id="form-error-summary" role="alert" tabindex="-1" class="mt-5 rounded-md border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-900 focus:outline-none focus:ring-2 focus:ring-red-700">
+          <p class="font-medium">{{ error_message }}</p>
+        </div>
+        {% endif %}
+
+        <form id="login-form" method="post" action="{% url 'login' %}" class="mt-6 space-y-4">
+          {% csrf_token %}
+          {% if next %}
+          <input type="hidden" name="next" value="{{ next }}">
+          {% endif %}
+
+          <!-- Username -->
+          <div class="field-group">
+            <label for="username" class="block text-sm font-medium text-ink mb-1.5">
+              Username
+            </label>
+            <input
+              type="text"
+              id="username"
+              name="username"
+              value="{{ username }}"
+              autocomplete="username"
+              autocorrect="off"
+              autocapitalize="none"
+              spellcheck="false"
+              enterkeyhint="next"
+              required
+              data-error="username-error"
+              {% if field_errors.username %}aria-invalid="true" aria-describedby="username-server-error"{% else %}aria-invalid="false"{% endif %}
+              placeholder="admin_lab"
+              class="block w-full min-h-[46px] rounded-md border {% if field_errors.username %}border-red-700 bg-red-50/40{% else %}border-stone-300 bg-white{% endif %} px-3.5 py-2.5 text-base text-ink placeholder:text-stone-400 transition-colors focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/15"
+            >
+            {% if field_errors.username %}
+            <p id="username-server-error" class="mt-1.5 text-xs font-medium text-red-700">
+              {{ field_errors.username }}
+            </p>
+            {% endif %}
+            <p id="username-error" class="client-error-msg mt-1.5 text-xs font-medium text-red-700">
+              Username wajib diisi.
+            </p>
+          </div>
+
+          <!-- Password -->
+          <div class="field-group">
+            <label for="password" class="block text-sm font-medium text-ink mb-1.5">
+              Password
+            </label>
+            <div class="relative">
+              <input
+                type="password"
+                id="password"
+                name="password"
+                autocomplete="current-password"
+                enterkeyhint="done"
+                required
+                data-error="password-error"
+                {% if field_errors.password %}aria-invalid="true" aria-describedby="password-server-error"{% else %}aria-invalid="false"{% endif %}
+                placeholder="••••••••"
+                class="block w-full min-h-[46px] rounded-md border {% if field_errors.password %}border-red-700 bg-red-50/40{% else %}border-stone-300 bg-white{% endif %} pl-3.5 pr-12 py-2.5 text-base text-ink placeholder:text-stone-400 transition-colors focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/15"
+              >
+              <button
+                type="button"
+                id="toggle-password"
+                aria-pressed="false"
+                aria-label="Tampilkan password"
+                class="absolute inset-y-0 right-0 flex min-w-[44px] cursor-pointer items-center justify-center rounded-r-md px-3 text-stone-500 transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink"
+              >
+                <i data-lucide="eye" id="icon-eye" class="h-4 w-4" aria-hidden="true"></i>
+                <i data-lucide="eye-off" id="icon-eye-off" class="hidden h-4 w-4" aria-hidden="true"></i>
+              </button>
+            </div>
+            {% if field_errors.password %}
+            <p id="password-server-error" class="mt-1.5 text-xs font-medium text-red-700">
+              {{ field_errors.password }}
+            </p>
+            {% endif %}
+            <p id="password-error" class="client-error-msg mt-1.5 text-xs font-medium text-red-700">
+              Password wajib diisi.
+            </p>
+          </div>
+
+          <button
+            type="submit"
+            id="submit-btn"
+            class="mt-2 inline-flex w-full min-h-[46px] cursor-pointer items-center justify-center rounded-md bg-ink px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Masuk ke Sistem
+          </button>
+        </form>
+      </div>
+
+      <!-- Akun Demo Presentasi -->
+      <section aria-labelledby="demo-accounts-heading" class="mt-5">
+        <div class="flex items-center justify-between mb-2">
+          <h2 id="demo-accounts-heading" class="text-xs font-medium text-muted">
+            Akun Demo Presentasi
+          </h2>
+          <span class="text-xs text-stone-500">Klik untuk isi otomatis</span>
+        </div>
+
+        <div class="grid grid-cols-3 divide-x divide-line overflow-hidden rounded-md border border-line bg-white">
+          <button
+            type="button"
+            data-demo-user="admin_lab"
+            data-demo-pass="AdminLab123!"
+            class="demo-fill-btn cursor-pointer px-3 py-2.5 text-left transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink"
+          >
+            <span class="block text-xs font-semibold text-ink">Admin</span>
+            <span class="mt-0.5 block truncate font-mono text-[11px] text-muted">admin_lab</span>
+          </button>
+
+          <button
+            type="button"
+            data-demo-user="teknisi_lab"
+            data-demo-pass="TeknisiLab123!"
+            class="demo-fill-btn cursor-pointer px-3 py-2.5 text-left transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink"
+          >
+            <span class="block text-xs font-semibold text-ink">Teknisi</span>
+            <span class="mt-0.5 block truncate font-mono text-[11px] text-muted">teknisi_lab</span>
+          </button>
+
+          <button
+            type="button"
+            data-demo-user="mhs_andi"
+            data-demo-pass="Peminjam123!"
+            class="demo-fill-btn cursor-pointer px-3 py-2.5 text-left transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink"
+          >
+            <span class="block text-xs font-semibold text-ink">Peminjam</span>
+            <span class="mt-0.5 block truncate font-mono text-[11px] text-muted">mhs_andi</span>
+          </button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+
+      const form = document.getElementById('login-form');
+      const usernameInput = document.getElementById('username');
+      const passwordInput = document.getElementById('password');
+      const toggleBtn = document.getElementById('toggle-password');
+      const iconEye = document.getElementById('icon-eye');
+      const iconEyeOff = document.getElementById('icon-eye-off');
+      const submitBtn = document.getElementById('submit-btn');
+      const serverErrorSummary = document.getElementById('form-error-summary');
+
+      if (serverErrorSummary) {
+        serverErrorSummary.focus();
+      }
+
+      if (toggleBtn && passwordInput) {
+        toggleBtn.addEventListener('click', () => {
+          const isHidden = passwordInput.type === 'password';
+          passwordInput.type = isHidden ? 'text' : 'password';
+          toggleBtn.setAttribute('aria-pressed', String(isHidden));
+          toggleBtn.setAttribute('aria-label', isHidden ? 'Sembunyikan password' : 'Tampilkan password');
+          iconEye?.classList.toggle('hidden', isHidden);
+          iconEyeOff?.classList.toggle('hidden', !isHidden);
+        });
+      }
+
+      const supportsUserInvalid = CSS.supports('selector(:user-invalid)');
+      const announcer = document.createElement('div');
+      announcer.setAttribute('aria-live', 'polite');
+      announcer.classList.add('visually-hidden');
+      document.body.append(announcer);
+
+      const flagged = new WeakSet();
+      const announced = new WeakSet();
+      const dirty = new WeakMap();
+      let announceTimer;
+
+      const linkError = (el, shown) => {
+        const errorId = el.dataset.error;
+        if (!errorId) return;
+        const ids = (el.getAttribute('aria-describedby') || '')
+          .split(/\s+/)
+          .filter((id) => id && id !== errorId);
+        if (shown) ids.push(errorId);
+        if (ids.length) el.setAttribute('aria-describedby', ids.join(' '));
+        else el.removeAttribute('aria-describedby');
+      };
+
+      const announceFieldError = (el) => {
+        const errorEl = document.getElementById(el.dataset.error);
+        if (!errorEl) return;
+        clearTimeout(announceTimer);
+        announcer.textContent = '';
+        announceTimer = setTimeout(() => {
+          announcer.textContent = errorEl.textContent.trim();
+        }, 400);
+      };
+
+      const syncAria = (el, announce = false) => {
+        if (!el.matches?.('input')) return;
+        const invalid = supportsUserInvalid
+          ? el.matches(':user-invalid')
+          : el.classList.contains('user-invalid-fallback');
+
+        if (invalid) {
+          if (announce && !announced.has(el)) {
+            announceFieldError(el);
+            announced.add(el);
+          }
+          el.setAttribute('aria-invalid', 'true');
+          linkError(el, true);
+          flagged.add(el);
+        } else if (flagged.has(el) || el.getAttribute('aria-invalid') !== 'true') {
+          el.setAttribute('aria-invalid', 'false');
+          linkError(el, false);
+          flagged.delete(el);
+          announced.delete(el);
+        }
+      };
+
+      form.querySelectorAll('input[required]').forEach((el) => {
+        if (!el.hasAttribute('aria-invalid')) el.setAttribute('aria-invalid', 'false');
+      });
+
+      form.addEventListener('blur', (e) => {
+        const el = e.target;
+        if (!supportsUserInvalid && el.matches?.('input[required]')) {
+          const st = dirty.get(el) || { edited: false, blurred: false };
+          st.blurred = true;
+          dirty.set(el, st);
+          if (st.edited) el.classList.toggle('user-invalid-fallback', !el.validity.valid);
+        }
+        syncAria(el, true);
+      }, true);
+
+      form.addEventListener('input', (e) => {
+        const el = e.target;
+        if (!supportsUserInvalid && el.matches?.('input[required]')) {
+          const st = dirty.get(el) || { edited: false, blurred: false };
+          st.edited = true;
+          dirty.set(el, st);
+          if (st.blurred) el.classList.toggle('user-invalid-fallback', !el.validity.valid);
+        }
+        syncAria(el);
+      });
+
+      form.addEventListener('invalid', (e) => {
+        const el = e.target;
+        if (!supportsUserInvalid) {
+          el.classList.toggle('user-invalid-fallback', !el.validity.valid);
+        }
+        announced.add(el);
+        syncAria(el);
+      }, true);
+
+      form.addEventListener('submit', () => {
+        if (form.checkValidity() && submitBtn) {
+          submitBtn.disabled = true;
+        }
+      });
+
+      document.querySelectorAll('.demo-fill-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          usernameInput.value = btn.dataset.demoUser || '';
+          passwordInput.value = btn.dataset.demoPass || '';
+          usernameInput.classList.remove('user-invalid-fallback');
+          passwordInput.classList.remove('user-invalid-fallback');
+          syncAria(usernameInput);
+          syncAria(passwordInput);
+          submitBtn.focus();
+        });
+      });
+    });
+  </script>
+</body>
+</html>

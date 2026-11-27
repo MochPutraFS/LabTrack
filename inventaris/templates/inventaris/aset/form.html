@@ -1,0 +1,42 @@
+{% extends "inventaris/base.html" %}
+
+{% block title %}{{ page_title }} — LabTrack{% endblock %}
+{% block page_title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl rounded-lg border border-line bg-white p-6 sm:p-8">
+  <form method="post" enctype="multipart/form-data" class="space-y-5">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div role="alert" class="rounded-md border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">
+      {{ form.non_field_errors|join:", " }}
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+      {% for field in form %}
+      <div class="{% if field.name == 'spesifikasi' or field.name == 'catatan' or field.name == 'foto' %}sm:col-span-2{% endif %}">
+        <label for="{{ field.id_for_label }}" class="mb-1.5 block text-sm font-medium text-ink">
+          {{ field.label }}
+          {% if field.field.required %}<span class="text-red-700" aria-hidden="true">*</span>{% endif %}
+        </label>
+        {{ field }}
+        {% if field.errors %}
+        <p class="mt-1.5 text-xs font-medium text-red-700">{{ field.errors.0 }}</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="flex items-center gap-3 border-t border-line pt-5">
+      <button type="submit" class="cursor-pointer rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-800">
+        Simpan Aset
+      </button>
+      <a href="{% if aset %}{% url 'aset_detail' aset.pk %}{% else %}{% url 'aset_list' %}{% endif %}" class="rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas">
+        Batal
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}

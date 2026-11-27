@@ -1,0 +1,38 @@
+{% extends "inventaris/base.html" %}
+
+{% block title %}Tolak Peminjaman — LabTrack{% endblock %}
+{% block page_title %}Tolak Pengajuan Peminjaman{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-lg rounded-lg border border-line bg-white p-6 sm:p-7">
+  <p class="font-mono text-xs font-semibold uppercase tracking-wider text-muted">{{ peminjaman.kode_peminjaman }}</p>
+  <h2 class="mt-1.5 text-lg font-semibold text-ink">{{ peminjaman.aset.nama_aset }}</h2>
+  <p class="mt-1 text-sm text-muted">
+    Diajukan oleh <span class="font-medium text-ink">{{ peminjaman.peminjam.get_full_name|default:peminjaman.peminjam.username }}</span>
+    ({{ peminjaman.tanggal_pinjam|date:"d M Y" }} &ndash; {{ peminjaman.tanggal_rencana_kembali|date:"d M Y" }}).
+  </p>
+
+  <form method="post" class="mt-5 space-y-4">
+    {% csrf_token %}
+    <div>
+      <label for="catatan_admin" class="mb-1.5 block text-sm font-medium text-ink">Alasan Penolakan</label>
+      <textarea
+        id="catatan_admin"
+        name="catatan_admin"
+        rows="3"
+        placeholder="Tuliskan alasan penolakan peminjaman (opsional)"
+        class="block w-full rounded-md border border-stone-300 bg-white px-3.5 py-2 text-sm text-ink placeholder:text-stone-400 focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/15"
+      ></textarea>
+    </div>
+
+    <div class="flex items-center gap-3 border-t border-line pt-4">
+      <button type="submit" class="cursor-pointer rounded-md bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800">
+        Tolak Peminjaman
+      </button>
+      <a href="{% url 'peminjaman_list' %}" class="rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-ink hover:bg-canvas">
+        Batal
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}

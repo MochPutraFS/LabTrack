@@ -1,0 +1,260 @@
+{% extends "inventaris/base.html" %}
+{% load inventaris_tags %}
+
+{% block title %}Dashboard — LabTrack{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <!-- 4 Kartu KPI Utama -->
+  <section aria-label="Ringkasan Indikator Utama" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="rounded-lg border border-line bg-white p-5">
+      <p class="text-xs font-medium uppercase tracking-wider text-muted">Total Aset Terdaftar</p>
+      <p class="mt-2 font-mono text-2xl font-semibold tabular-nums text-ink">{{ total_aset }}</p>
+      <p class="mt-1.5 text-xs text-muted">
+        Nilai buku: <span class="font-mono font-medium text-ink">{{ total_nilai_buku|rupiah }}</span>
+      </p>
+    </div>
+
+    <div class="rounded-lg border border-line bg-white p-5">
+      <p class="text-xs font-medium uppercase tracking-wider text-muted">Tersedia vs Dipinjam</p>
+      <p class="mt-2 font-mono text-2xl font-semibold tabular-nums text-ink">
+        {{ aset_tersedia }} <span class="text-base font-normal text-muted">/ {{ aset_dipinjam }}</span>
+      </p>
+      <p class="mt-1.5 text-xs text-muted">
+        <span class="font-medium text-emerald-800">{{ aset_tersedia }} tersedia</span> &middot;
+        <span class="font-medium text-amber-800">{{ aset_dipinjam }} dipinjam</span>
+      </p>
+    </div>
+
+    <div class="rounded-lg border border-line bg-white p-5">
+      <p class="text-xs font-medium uppercase tracking-wider text-muted">Kerusakan Aktif</p>
+      <p class="mt-2 font-mono text-2xl font-semibold tabular-nums text-ink">{{ kerusakan_aktif }}</p>
+      <p class="mt-1.5 text-xs text-muted">Status dilaporkan &amp; diproses</p>
+    </div>
+
+    <div class="rounded-lg border border-line bg-white p-5">
+      <p class="text-xs font-medium uppercase tracking-wider text-muted">Pemeliharaan 30 Hari</p>
+      <p class="mt-2 font-mono text-2xl font-semibold tabular-nums text-ink">{{ pemeliharaan_mendatang }}</p>
+      <p class="mt-1.5 text-xs text-muted">Jadwal aktif 30 hari ke depan</p>
+    </div>
+  </section>
+
+  <!-- 2 Grafik Interaktif (Chart.js) -->
+  <section aria-label="Visualisasi Data Aset" class="grid grid-cols-1 gap-4 lg:grid-cols-12">
+    <div class="rounded-lg border border-line bg-white p-5 lg:col-span-5">
+      <div class="mb-4">
+        <h2 class="text-sm font-semibold text-ink">Distribusi Kondisi Aset</h2>
+        <p class="text-xs text-muted">Proporsi seluruh unit berdasarkan kondisi fisik</p>
+      </div>
+      <div class="relative mx-auto h-60 max-w-xs">
+        <canvas id="kondisiChart" aria-label="Grafik distribusi kondisi aset" role="img"></canvas>
+      </div>
+      <dl class="mt-4 grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-line pt-3 text-xs">
+        <div class="flex items-center justify-between">
+          <dt class="text-muted">Baik</dt>
+          <dd class="font-mono font-medium text-ink">{{ kondisi_chart_data.values.0 }}</dd>
+        </div>
+        <div class="flex items-center justify-between">
+          <dt class="text-muted">Rusak Ringan</dt>
+          <dd class="font-mono font-medium text-ink">{{ kondisi_chart_data.values.1 }}</dd>
+        </div>
+        <div class="flex items-center justify-between">
+          <dt class="text-muted">Rusak Berat</dt>
+          <dd class="font-mono font-medium text-ink">{{ kondisi_chart_data.values.2 }}</dd>
+        </div>
+        <div class="flex items-center justify-between">
+          <dt class="text-muted">Perbaikan</dt>
+          <dd class="font-mono font-medium text-ink">{{ kondisi_chart_data.values.3 }}</dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="rounded-lg border border-line bg-white p-5 lg:col-span-7">
+      <div class="mb-4">
+        <h2 class="text-sm font-semibold text-ink">Jumlah Aset per Kategori</h2>
+        <p class="text-xs text-muted">Sebaran unit inventaris di setiap kategori barang</p>
+      </div>
+      <div class="relative h-72">
+        <canvas id="kategoriChart" aria-label="Grafik jumlah aset per kategori" role="img"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 Panel Operasional Ringkas -->
+  <section aria-label="Ringkasan Operasional" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+    <!-- Peminjaman Terbaru -->
+    <div class="rounded-lg border border-line bg-white overflow-hidden">
+      <div class="flex items-center justify-between border-b border-line px-5 py-3.5">
+        <h2 class="text-sm font-semibold text-ink">Peminjaman Terbaru</h2>
+        <a href="{% url 'peminjaman_list' %}" class="text-xs font-medium text-muted hover:text-ink">Lihat semua</a>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="border-b border-line bg-canvas text-xs uppercase tracking-wider text-muted">
+            <tr>
+              <th scope="col" class="px-4 py-2.5 font-medium">Kode</th>
+              <th scope="col" class="px-4 py-2.5 font-medium">Aset</th>
+              <th scope="col" class="px-4 py-2.5 font-medium">Peminjam</th>
+              <th scope="col" class="px-4 py-2.5 font-medium">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line">
+            {% for p in peminjaman_terbaru %}
+            <tr class="hover:bg-canvas/60">
+              <td class="px-4 py-3 font-mono text-xs text-ink whitespace-nowrap">{{ p.kode_peminjaman }}</td>
+              <td class="px-4 py-3 text-ink">{{ p.aset.nama_aset }}</td>
+              <td class="px-4 py-3 text-muted">{{ p.peminjam.username }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">
+                <span class="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium {{ p.status|badge_status }}">
+                  {{ p.get_status_display }}
+                </span>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4" class="px-4 py-6 text-center text-sm text-muted">Belum ada data peminjaman.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Jadwal Pemeliharaan Terdekat -->
+    <div class="rounded-lg border border-line bg-white overflow-hidden">
+      <div class="flex items-center justify-between border-b border-line px-5 py-3.5">
+        <h2 class="text-sm font-semibold text-ink">Jadwal Pemeliharaan Terdekat</h2>
+        <a href="{% url 'pemeliharaan_list' %}" class="text-xs font-medium text-muted hover:text-ink">Lihat semua</a>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="border-b border-line bg-canvas text-xs uppercase tracking-wider text-muted">
+            <tr>
+              <th scope="col" class="px-4 py-2.5 font-medium">Aset</th>
+              <th scope="col" class="px-4 py-2.5 font-medium">Jenis</th>
+              <th scope="col" class="px-4 py-2.5 font-medium">Tanggal</th>
+              <th scope="col" class="px-4 py-2.5 font-medium text-right">Tenggat</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line">
+            {% for item in jadwal_terdekat %}
+            <tr class="hover:bg-canvas/60">
+              <td class="px-4 py-3 text-ink">
+                <span class="block font-medium">{{ item.obj.aset.nama_aset }}</span>
+                <span class="font-mono text-[11px] text-muted">{{ item.obj.kode_jadwal }}</span>
+              </td>
+              <td class="px-4 py-3 text-muted">{{ item.obj.get_jenis_display }}</td>
+              <td class="px-4 py-3 font-mono text-xs text-ink whitespace-nowrap">{{ item.obj.tanggal_jadwal|date:"d M Y" }}</td>
+              <td class="px-4 py-3 text-right whitespace-nowrap">
+                {% if item.selisih_hari < 0 %}
+                <span class="inline-flex items-center rounded border border-red-200 bg-red-50 px-2 py-0.5 font-mono text-[11px] font-medium text-red-800">
+                  Terlambat {{ item.abs_hari }}h
+                </span>
+                {% elif item.selisih_hari == 0 %}
+                <span class="inline-flex items-center rounded border border-amber-200 bg-amber-50 px-2 py-0.5 font-mono text-[11px] font-medium text-amber-800">
+                  Hari ini
+                </span>
+                {% else %}
+                <span class="inline-flex items-center rounded border border-line bg-canvas px-2 py-0.5 font-mono text-[11px] font-medium text-ink">
+                  {{ item.selisih_hari }} hari lagi
+                </span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4" class="px-4 py-6 text-center text-sm text-muted">Tidak ada jadwal pemeliharaan aktif.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>
+
+{{ kondisi_chart_data|json_script:"kondisi-chart-data" }}
+{{ kategori_chart_data|json_script:"kategori-chart-data" }}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (!window.Chart) return;
+
+    const kondisiEl = document.getElementById('kondisiChart');
+    const kategoriEl = document.getElementById('kategoriChart');
+    const kondisiData = JSON.parse(document.getElementById('kondisi-chart-data').textContent);
+    const kategoriData = JSON.parse(document.getElementById('kategori-chart-data').textContent);
+
+    Chart.defaults.font.family = '"Plus Jakarta Sans", system-ui, sans-serif';
+    Chart.defaults.color = '#57534E';
+
+    if (kondisiEl) {
+      new Chart(kondisiEl, {
+        type: 'doughnut',
+        data: {
+          labels: kondisiData.labels,
+          datasets: [{
+            data: kondisiData.values,
+            backgroundColor: ['#15803D', '#B45309', '#B91C1C', '#78716C'],
+            borderColor: '#FFFFFF',
+            borderWidth: 2,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '64%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { boxWidth: 10, padding: 14, usePointStyle: true },
+            },
+          },
+        },
+      });
+    }
+
+    if (kategoriEl) {
+      new Chart(kategoriEl, {
+        type: 'bar',
+        data: {
+          labels: kategoriData.labels,
+          datasets: [{
+            label: 'Jumlah Aset',
+            data: kategoriData.values,
+            backgroundColor: '#1C1917',
+            borderRadius: 4,
+            maxBarThickness: 42,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              border: { color: '#DCD9D2' },
+            },
+            y: {
+              beginAtZero: true,
+              ticks: { precision: 0 },
+              grid: { color: '#F5F4F0' },
+              border: { display: false },
+            },
+          },
+        },
+      });
+    }
+  });
+</script>
+{% endblock %}

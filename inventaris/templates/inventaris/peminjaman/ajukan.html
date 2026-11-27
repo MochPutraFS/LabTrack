@@ -1,0 +1,40 @@
+{% extends "inventaris/base.html" %}
+
+{% block title %}Ajukan Peminjaman — LabTrack{% endblock %}
+{% block page_title %}Ajukan Peminjaman Aset{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl rounded-lg border border-line bg-white p-6 sm:p-8">
+  <form method="post" class="space-y-5">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div role="alert" class="rounded-md border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">
+      {{ form.non_field_errors|join:", " }}
+    </div>
+    {% endif %}
+
+    {% for field in form %}
+    <div>
+      <label for="{{ field.id_for_label }}" class="mb-1.5 block text-sm font-medium text-ink">
+        {{ field.label }}
+        {% if field.field.required %}<span class="text-red-700" aria-hidden="true">*</span>{% endif %}
+      </label>
+      {{ field }}
+      {% if field.errors %}
+      <p class="mt-1.5 text-xs font-medium text-red-700">{{ field.errors.0 }}</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    <div class="flex items-center gap-3 border-t border-line pt-5">
+      <button type="submit" class="cursor-pointer rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-800">
+        Kirim Pengajuan
+      </button>
+      <a href="{% url 'peminjaman_list' %}" class="rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas">
+        Batal
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}
