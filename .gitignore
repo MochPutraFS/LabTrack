@@ -28,3 +28,8 @@ staticfiles/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Local tools & temporary clones
+_tools/
+_tools_temp/
+_panduan/
