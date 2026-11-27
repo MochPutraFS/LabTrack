@@ -1,11 +1,14 @@
+import csv
 from datetime import timedelta
+from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Count, ProtectedError, Q
+from django.db.models import Count, ProtectedError, Q, Sum
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -24,7 +27,7 @@ from .forms import (
     SelesaiPemeliharaanForm,
 )
 from .models import Aset, JadwalPemeliharaan, KategoriAset, LaporanKerusakan, LokasiLab, Peminjaman
-from .services import generate_aset_qr
+from .services import generate_aset_qr, hitung_penyusutan
 
 User = get_user_model()
 
@@ -821,9 +824,134 @@ def pemeliharaan_selesai(request, pk):
 
 
 # ---------------------------------------------------------------------------
-# Placeholder routes untuk modul S07
+# Laporan Kondisi & Penyusutan Aset
 # ---------------------------------------------------------------------------
 
-@login_required
-def module_placeholder(request, title=''):
-    return render(request, 'inventaris/coming_soon.html', {'module_title': title})
+def _get_laporan_data(request):
+    qs = Aset.objects.select_related('kategori', 'lokasi').order_by('kode_aset')
+
+    kategori_id = request.GET.get('kategori', '').strip()
+    lokasi_id = request.GET.get('lokasi', '').strip()
+    kondisi = request.GET.get('kondisi', '').strip()
+    tahun = request.GET.get('tahun', '').strip()
+
+    if kategori_id.isdigit():
+        qs = qs.filter(kategori_id=int(kategori_id))
+    if lokasi_id.isdigit():
+        qs = qs.filter(lokasi_id=int(lokasi_id))
+    if kondisi in dict(Aset.KONDISI_CHOICES):
+        qs = qs.filter(kondisi=kondisi)
+    if tahun.isdigit():
+        qs = qs.filter(tanggal_perolehan__year=int(tahun))
+
+    asets = list(qs)
+    today = timezone.localdate()
+
+    rows = []
+    total_perolehan = Decimal('0')
+    total_akumulasi = Decimal('0')
+    total_nilai_buku = Decimal('0')
+
+    for aset in asets:
+        metrik = hitung_penyusutan(aset, tanggal_acuan=today)
+        total_perolehan += aset.harga_perolehan
+        total_akumulasi += metrik['akumulasi_penyusutan']
+        total_nilai_buku += metrik['nilai_buku']
+        rows.append({
+            'aset': aset,
+            'usia_tahun': metrik['usia_tahun'],
+            'penyusutan_per_tahun': metrik['penyusutan_per_tahun'],
+            'akumulasi_penyusutan': metrik['akumulasi_penyusutan'],
+            'nilai_buku': metrik['nilai_buku'],
+            'persentase_susut': min(100, float(metrik['persentase_susut'])),
+        })
+
+    biaya_per_kategori = (
+        JadwalPemeliharaan.objects.filter(status='SELESAI', aset__in=asets)
+        .values('aset__kategori__nama')
+        .annotate(total_biaya=Sum('biaya'), jumlah_kegiatan=Count('id'))
+        .order_by('aset__kategori__nama')
+    )
+    total_biaya_pemeliharaan = sum((b['total_biaya'] or Decimal('0')) for b in biaya_per_kategori)
+
+    query_params = request.GET.copy()
+    query_params.pop('export', None)
+
+    return {
+        'rows': rows,
+        'total_unit': len(rows),
+        'total_perolehan': total_perolehan,
+        'total_akumulasi': total_akumulasi,
+        'total_nilai_buku': total_nilai_buku,
+        'biaya_per_kategori': biaya_per_kategori,
+        'total_biaya_pemeliharaan': total_biaya_pemeliharaan,
+        'kategoris': KategoriAset.objects.order_by('nama'),
+        'lokasis': LokasiLab.objects.order_by('nama_ruang'),
+        'kondisi_choices': Aset.KONDISI_CHOICES,
+        'tahun_choices': [d.year for d in Aset.objects.dates('tanggal_perolehan', 'year', order='DESC')],
+        'filters': {
+            'kategori': kategori_id,
+            'lokasi': lokasi_id,
+            'kondisi': kondisi,
+            'tahun': tahun,
+        },
+        'query_string': query_params.urlencode(),
+        'tanggal_cetak': timezone.localtime(),
+    }
+
+
+@role_required('ADMIN', 'TEKNISI')
+def laporan_penyusutan(request):
+    data = _get_laporan_data(request)
+
+    if request.GET.get('export') == 'csv':
+        response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
+        response['Content-Disposition'] = 'attachment; filename="laporan_inventaris_penyusutan.csv"'
+        response.write('\ufeff')
+
+        writer = csv.writer(response)
+        writer.writerow([
+            'Kode Aset',
+            'Nama Aset',
+            'Kategori',
+            'Lokasi',
+            'Tanggal Perolehan',
+            'Usia (Tahun)',
+            'Umur Ekonomis (Tahun)',
+            'Harga Perolehan (Rp)',
+            'Nilai Residu (Rp)',
+            'Penyusutan/Tahun (Rp)',
+            'Akumulasi Penyusutan (Rp)',
+            'Persentase Susut (%)',
+            'Nilai Buku (Rp)',
+            'Kondisi',
+            'Status',
+        ])
+        for r in data['rows']:
+            a = r['aset']
+            writer.writerow([
+                a.kode_aset,
+                a.nama_aset,
+                a.kategori.nama,
+                a.lokasi.nama_ruang,
+                a.tanggal_perolehan.isoformat(),
+                r['usia_tahun'],
+                a.umur_ekonomis_tahun,
+                a.harga_perolehan,
+                a.nilai_residu,
+                r['penyusutan_per_tahun'],
+                r['akumulasi_penyusutan'],
+                r['persentase_susut'],
+                r['nilai_buku'],
+                a.get_kondisi_display(),
+                a.get_status_display(),
+            ])
+        return response
+
+    return render(request, 'inventaris/laporan/penyusutan.html', data)
+
+
+@role_required('ADMIN', 'TEKNISI')
+def laporan_cetak(request):
+    data = _get_laporan_data(request)
+    return render(request, 'inventaris/laporan/cetak.html', data)

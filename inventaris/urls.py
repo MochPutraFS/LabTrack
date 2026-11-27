@@ -48,11 +48,7 @@ urlpatterns = [
     path('pemeliharaan/<int:pk>/mulai/', views.pemeliharaan_mulai, name='pemeliharaan_mulai'),
     path('pemeliharaan/<int:pk>/selesai/', views.pemeliharaan_selesai, name='pemeliharaan_selesai'),
 
-    # Placeholder routes untuk modul S07
-    path(
-        'laporan/kondisi-penyusutan/',
-        views.module_placeholder,
-        {'title': 'Laporan & Penyusutan'},
-        name='laporan_penyusutan',
-    ),
+    # Laporan Kondisi & Penyusutan Aset
+    path('laporan/kondisi-penyusutan/', views.laporan_penyusutan, name='laporan_penyusutan'),
+    path('laporan/cetak/', views.laporan_cetak, name='laporan_cetak'),
 ]

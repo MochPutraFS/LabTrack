@@ -577,3 +577,90 @@ class KerusakanAndPemeliharaanTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Lewat 2 hari')
         self.assertContains(resp, '3 hari lagi')
+
+
+class LaporanPenyusutanTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user('admin_lab', 'admin@example.com', 'AdminLab123!')
+        UserProfile.objects.create(
+            user=self.admin, role='ADMIN', nomor_identitas='NIP-001', unit_prodi='Lab Terpadu'
+        )
+        self.teknisi = User.objects.create_user('teknisi_lab', 'teknisi@example.com', 'TeknisiLab123!')
+        UserProfile.objects.create(
+            user=self.teknisi, role='TEKNISI', nomor_identitas='NIP-002', unit_prodi='Lab Terpadu'
+        )
+        self.peminjam = User.objects.create_user('mhs_andi', 'andi@example.com', 'Peminjam123!')
+        UserProfile.objects.create(
+            user=self.peminjam, role='PEMINJAM', nomor_identitas='H071221001', unit_prodi='Sistem Informasi'
+        )
+        self.kat_kom = KategoriAset.objects.create(kode='KOM', nama='Komputer')
+        self.kat_jar = KategoriAset.objects.create(kode='JAR', nama='Jaringan')
+        self.lokasi = LokasiLab.objects.create(
+            kode_ruang='LAB-01', nama_ruang='Lab RPL', gedung='Gedung A', penanggung_jawab='Admin'
+        )
+        self.aset_baru = Aset.objects.create(
+            nama_aset='PC Lab 01',
+            kategori=self.kat_kom,
+            lokasi=self.lokasi,
+            merk_tipe='Dell',
+            tanggal_perolehan=date(2025, 1, 1),
+            harga_perolehan=Decimal('10000000'),
+            nilai_residu=Decimal('2000000'),
+            umur_ekonomis_tahun=4,
+            kondisi='BAIK',
+        )
+        self.aset_tua = Aset.objects.create(
+            nama_aset='Switch Core Lama',
+            kategori=self.kat_jar,
+            lokasi=self.lokasi,
+            merk_tipe='Cisco',
+            tanggal_perolehan=date(2015, 1, 1),
+            harga_perolehan=Decimal('5000000'),
+            nilai_residu=Decimal('500000'),
+            umur_ekonomis_tahun=5,
+            kondisi='RUSAK_RINGAN',
+        )
+        JadwalPemeliharaan.objects.create(
+            kode_jadwal='MNT-202611-801',
+            aset=self.aset_baru,
+            jenis='PREVENTIF',
+            tanggal_jadwal=date(2026, 11, 1),
+            tanggal_selesai=date(2026, 11, 2),
+            biaya=Decimal('350000'),
+            deskripsi_kegiatan='Servis rutin',
+            status='SELESAI',
+        )
+
+    def test_depreciation_bounds_and_report_views_and_csv(self):
+        # Aset melewati umur ekonomis tidak pernah turun di bawah nilai residu
+        self.assertEqual(self.aset_tua.nilai_buku, Decimal('500000.00'))
+        self.assertGreaterEqual(self.aset_baru.nilai_buku, self.aset_baru.nilai_residu)
+
+        # Peminjam diblokir dari halaman laporan & cetak
+        self.client.force_login(self.peminjam)
+        self.assertRedirects(self.client.get(reverse('laporan_penyusutan')), reverse('dashboard'))
+        self.assertRedirects(self.client.get(reverse('laporan_cetak')), reverse('dashboard'))
+
+        # Teknisi dapat mengakses laporan dengan filter
+        self.client.force_login(self.teknisi)
+        resp = self.client.get(reverse('laporan_penyusutan'), {'kategori': self.kat_kom.pk})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context['total_unit'], 1)
+        self.assertContains(resp, self.aset_baru.kode_aset)
+        self.assertNotContains(resp, self.aset_tua.kode_aset)
+        self.assertContains(resp, 'Rp 350.000')
+
+        # Ekspor CSV mengikuti filter dan menggunakan UTF-8 BOM
+        csv_resp = self.client.get(reverse('laporan_penyusutan'), {'kategori': self.kat_kom.pk, 'export': 'csv'})
+        self.assertEqual(csv_resp.status_code, 200)
+        self.assertIn('attachment; filename="laporan_inventaris_penyusutan.csv"', csv_resp['Content-Disposition'])
+        body = csv_resp.content.decode('utf-8-sig')
+        self.assertIn(self.aset_baru.kode_aset, body)
+        self.assertNotIn(self.aset_tua.kode_aset, body)
+
+        # Halaman cetak formal mengikuti filter
+        cetak_resp = self.client.get(reverse('laporan_cetak'), {'kondisi': 'RUSAK_RINGAN'})
+        self.assertEqual(cetak_resp.status_code, 200)
+        self.assertContains(cetak_resp, self.aset_tua.kode_aset)
+        self.assertNotContains(cetak_resp, self.aset_baru.kode_aset)
+        self.assertContains(cetak_resp, 'Kepala Laboratorium')
