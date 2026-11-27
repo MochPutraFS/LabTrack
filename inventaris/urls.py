@@ -1,6 +1,9 @@
-from django.http import HttpResponse
 from django.urls import path
 
+from . import views
+
 urlpatterns = [
-    path('', lambda request: HttpResponse('LabTrack API & UI siap.'), name='home'),
+    path('', views.dashboard, name='dashboard'),
+    path('login/', views.login_view, name='login'),
+    path('logout/', views.logout_view, name='logout'),
 ]
