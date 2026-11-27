@@ -3,23 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard — LabTrack Inventaris Lab UNHAS</title>
+  <title>Dashboard — LabTrack</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            navy: {
-              DEFAULT: '#1E3A5F',
-              dark: '#152A45',
-              ink: '#102136',
-            },
-            paper: '#F7F7F5',
-            ochre: '#B45309',
+            canvas: '#F5F4F0',
+            ink: '#1C1917',
+            muted: '#57534E',
+            line: '#DCD9D2',
           },
           fontFamily: {
             sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
@@ -30,34 +27,27 @@
     };
   </script>
 </head>
-<body class="min-h-screen bg-paper font-sans text-[#111827] antialiased">
-  <header class="border-b border-slate-200 bg-white">
+<body class="min-h-screen bg-canvas font-sans text-ink antialiased">
+  <header class="border-b border-line bg-white">
     <div class="mx-auto flex max-w-5xl items-center justify-between px-5 py-4 sm:px-8">
-      <div class="flex items-center gap-3">
-        <svg class="h-6 w-6 text-navy shrink-0" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-          <rect x="1.5" y="1.5" width="25" height="25" rx="3" stroke="currentColor" stroke-width="1.75"/>
-          <path d="M8 19V9h3.2M8 19h12M14 9v6M18 9v4" stroke="currentColor" stroke-width="1.75" stroke-linecap="square"/>
-          <rect x="18" y="15.5" width="3" height="3.5" fill="#B45309"/>
-        </svg>
-        <div>
-          <p class="text-sm font-bold tracking-tight text-navy-ink leading-none">LabTrack</p>
-          <p class="mt-0.5 font-mono text-[11px] uppercase tracking-wider text-slate-500">Inventaris Lab UNHAS</p>
-        </div>
+      <div>
+        <p class="text-sm font-bold tracking-tight text-ink leading-none">LabTrack</p>
+        <p class="mt-0.5 text-xs text-muted">Sistem Inventaris Laboratorium</p>
       </div>
 
       <div class="flex items-center gap-3.5">
         <div class="text-right hidden sm:block">
-          <p class="text-sm font-semibold text-slate-900 leading-tight">{{ request.user.get_full_name|default:request.user.username }}</p>
-          <p class="font-mono text-xs text-slate-500">{{ request.user.username }}</p>
+          <p class="text-sm font-medium text-ink leading-tight">{{ request.user.get_full_name|default:request.user.username }}</p>
+          <p class="font-mono text-xs text-muted">{{ request.user.username }}</p>
         </div>
         {% if user_role %}
-        <span class="inline-flex items-center rounded border px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wider {% if user_role == 'ADMIN' %}border-navy/30 bg-navy/5 text-navy{% elif user_role == 'TEKNISI' %}border-amber-700/30 bg-amber-50 text-ochre{% else %}border-slate-300 bg-slate-100 text-slate-700{% endif %}">
+        <span class="inline-flex items-center rounded border border-line bg-canvas px-2 py-0.5 font-mono text-[11px] font-medium uppercase tracking-wider text-ink">
           {{ user_role }}
         </span>
         {% endif %}
         <form method="post" action="{% url 'logout' %}">
           {% csrf_token %}
-          <button type="submit" class="cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy">
+          <button type="submit" class="cursor-pointer rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink">
             Keluar
           </button>
         </form>
@@ -67,42 +57,41 @@
 
   <main class="mx-auto max-w-5xl px-5 py-10 sm:px-8">
     {% if messages %}
-    <div class="mb-6 space-y-2.5" aria-live="polite">
+    <div class="mb-6 space-y-2" aria-live="polite">
       {% for message in messages %}
-      <div role="status" class="border-l-2 px-4 py-3 text-sm {% if message.tags == 'error' %}border-red-700 bg-red-50 text-red-900{% elif message.tags == 'warning' %}border-amber-700 bg-amber-50 text-amber-900{% elif message.tags == 'success' %}border-emerald-700 bg-emerald-50 text-emerald-900{% else %}border-navy bg-white text-slate-800{% endif %}">
+      <div role="status" class="rounded-md border px-4 py-3 text-sm {% if message.tags == 'error' %}border-red-200 bg-red-50 text-red-900{% elif message.tags == 'warning' %}border-amber-200 bg-amber-50 text-amber-900{% elif message.tags == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-900{% else %}border-line bg-white text-ink{% endif %}">
         {{ message }}
       </div>
       {% endfor %}
     </div>
     {% endif %}
 
-    <section class="rounded-md border border-slate-200 bg-white p-6 sm:p-8">
-      <p class="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">Sesi Aktif</p>
-      <h1 class="mt-2 text-2xl font-bold tracking-tight text-slate-900">Dashboard LabTrack</h1>
-      <p class="mt-1.5 text-sm text-slate-600">
-        Selamat datang, <span class="font-semibold text-slate-900">{{ request.user.get_full_name|default:request.user.username }}</span>.
-        Kontrol akses peran (<span class="font-mono font-medium text-navy">{{ user_role|default:"-" }}</span>) telah aktif.
+    <section class="rounded-lg border border-line bg-white p-6 sm:p-8">
+      <h1 class="text-xl font-semibold tracking-tight text-ink">Dashboard</h1>
+      <p class="mt-1 text-sm text-muted">
+        Selamat datang, <span class="font-medium text-ink">{{ request.user.get_full_name|default:request.user.username }}</span>.
+        Sesi autentikasi aktif dengan peran <span class="font-mono text-ink">{{ user_role|default:"-" }}</span>.
       </p>
 
       {% if user_profile %}
-      <dl class="mt-6 grid grid-cols-1 gap-5 border-t border-slate-200 pt-6 sm:grid-cols-3 text-sm">
+      <dl class="mt-6 grid grid-cols-1 gap-5 border-t border-line pt-6 sm:grid-cols-3 text-sm">
         <div>
-          <dt class="font-mono text-[11px] uppercase tracking-wider text-slate-500">Nomor Identitas</dt>
-          <dd class="mt-1 font-mono font-medium text-slate-900">{{ user_profile.nomor_identitas }}</dd>
+          <dt class="text-xs text-muted">Nomor Identitas</dt>
+          <dd class="mt-1 font-mono font-medium text-ink">{{ user_profile.nomor_identitas }}</dd>
         </div>
         <div>
-          <dt class="font-mono text-[11px] uppercase tracking-wider text-slate-500">Unit / Prodi</dt>
-          <dd class="mt-1 font-medium text-slate-900">{{ user_profile.unit_prodi }}</dd>
+          <dt class="text-xs text-muted">Unit / Prodi</dt>
+          <dd class="mt-1 font-medium text-ink">{{ user_profile.unit_prodi }}</dd>
         </div>
         <div>
-          <dt class="font-mono text-[11px] uppercase tracking-wider text-slate-500">Peran Sistem</dt>
-          <dd class="mt-1 font-medium text-slate-900">{{ user_profile.get_role_display }}</dd>
+          <dt class="text-xs text-muted">Peran Sistem</dt>
+          <dd class="mt-1 font-medium text-ink">{{ user_profile.get_role_display }}</dd>
         </div>
       </dl>
       {% endif %}
 
-      <p class="mt-6 border-t border-slate-100 pt-4 text-xs text-slate-500">
-        Placeholder Sesi 02 &mdash; layout sidebar penuh (`base.html`) dan visualisasi Chart.js akan dibangun pada Sesi 03.
+      <p class="mt-6 border-t border-stone-100 pt-4 text-xs text-muted">
+        Placeholder Sesi 02 &mdash; layout penuh dan grafik dashboard akan dibangun pada Sesi 03.
       </p>
     </section>
   </main>
