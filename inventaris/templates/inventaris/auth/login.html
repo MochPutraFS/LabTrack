@@ -12,6 +12,15 @@
     tailwind.config = {
       theme: {
         extend: {
+          colors: {
+            navy: {
+              DEFAULT: '#1E3A5F',
+              dark: '#152A45',
+              ink: '#102136',
+            },
+            paper: '#F7F7F5',
+            ochre: '#B45309',
+          },
           fontFamily: {
             sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
             mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
@@ -34,17 +43,25 @@
       white-space: nowrap !important;
     }
 
+    /* Subtle architectural drafting grid on the institutional panel */
+    .lab-grid {
+      background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+
     .client-error-msg {
       display: none;
     }
 
     input:is(:user-invalid, .user-invalid-fallback) {
-      border-color: #e11d48;
-      background-color: #fff1f2;
+      border-color: #B91C1C;
+      background-color: #FEF2F2;
     }
 
     .field-group:has(input:is(:user-invalid, .user-invalid-fallback)) .client-error-msg {
-      display: flex;
+      display: block;
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -55,265 +72,236 @@
     }
   </style>
 </head>
-<body class="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased">
+<body class="min-h-screen bg-white font-sans text-[#111827] antialiased selection:bg-navy selection:text-white">
   <div class="min-h-screen lg:grid lg:grid-cols-12">
-    <!-- Panel Kiri: Branding LabTrack -->
-    <aside class="relative hidden lg:flex lg:col-span-5 xl:col-span-6 flex-col justify-between bg-slate-900 text-slate-100 p-10 xl:p-14 overflow-hidden">
-      <div class="pointer-events-none absolute -top-24 -right-24 h-80 w-80 rounded-full bg-blue-600/20 blur-3xl" aria-hidden="true"></div>
-      <div class="pointer-events-none absolute -bottom-24 -left-24 h-80 w-80 rounded-full bg-sky-500/10 blur-3xl" aria-hidden="true"></div>
-
-      <div class="relative z-10 flex items-center gap-3">
-        <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
-          <i data-lucide="boxes" class="h-6 w-6" aria-hidden="true"></i>
+    <!-- Panel Kiri: Identitas Institusional (Swiss Grid, Matte Scholarly Navy) -->
+    <aside class="lab-grid hidden lg:flex lg:col-span-5 flex-col justify-between bg-navy-ink text-white border-r border-slate-200 p-10 xl:p-14">
+      <div class="flex items-center justify-between border-b border-white/15 pb-6">
+        <div class="flex items-center gap-3">
+          <svg class="h-7 w-7 text-white shrink-0" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+            <rect x="1.5" y="1.5" width="25" height="25" rx="3" stroke="currentColor" stroke-width="1.75"/>
+            <path d="M8 19V9h3.2M8 19h12M14 9v6M18 9v4" stroke="currentColor" stroke-width="1.75" stroke-linecap="square"/>
+            <rect x="18" y="15.5" width="3" height="3.5" fill="#D97706"/>
+          </svg>
+          <div>
+            <p class="text-base font-bold tracking-tight leading-none">LabTrack</p>
+            <p class="mt-1 font-mono text-[11px] uppercase tracking-widest text-slate-300">Inventaris Lab UNHAS</p>
+          </div>
         </div>
-        <div>
-          <p class="text-lg font-bold tracking-tight text-white">LabTrack</p>
-          <p class="text-xs font-medium text-slate-400">Inventaris Lab UNHAS</p>
-        </div>
+        <span class="font-mono text-[11px] text-slate-400">REV 1.0</span>
       </div>
 
-      <div class="relative z-10 my-auto max-w-lg py-10">
-        <span class="inline-flex items-center gap-2 rounded-full bg-blue-600/15 px-3 py-1 text-xs font-semibold text-blue-300 ring-1 ring-blue-500/30">
-          <i data-lucide="shield-check" class="h-3.5 w-3.5" aria-hidden="true"></i>
-          Sistem Manajemen Aset Laboratorium
-        </span>
-        <h1 class="mt-5 text-3xl xl:text-4xl font-bold tracking-tight text-white leading-tight">
-          Kelola aset laboratorium lebih akurat, transparan, dan terukur.
-        </h1>
-        <p class="mt-4 text-sm xl:text-base text-slate-300 leading-relaxed">
-          Satu platform terintegrasi untuk pencatatan inventaris, persetujuan peminjaman, pelaporan kerusakan, hingga perhitungan penyusutan aset secara otomatis.
+      <div class="my-auto py-12">
+        <p class="font-mono text-xs uppercase tracking-[0.16em] text-amber-400">
+          Sistem Pencatatan Aset
         </p>
+        <h1 class="mt-4 text-3xl xl:text-[2.15rem] font-semibold tracking-tight text-white leading-[1.2]">
+          Kendali inventaris, sirkulasi peminjaman, dan nilai aset laboratorium dalam satu catatan.
+        </h1>
 
-        <ul class="mt-8 space-y-4">
-          <li class="flex items-start gap-3.5">
-            <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-blue-400 ring-1 ring-slate-700">
-              <i data-lucide="qr-code" class="h-4 w-4" aria-hidden="true"></i>
-            </span>
-            <div>
-              <p class="text-sm font-semibold text-white">Pelacakan Aset &amp; Label QR Code</p>
-              <p class="text-xs text-slate-400 mt-0.5">Identifikasi cepat setiap perangkat dengan kode unik <span class="font-mono text-slate-300">LAB-KOM-2024-001</span>.</p>
-            </div>
-          </li>
-          <li class="flex items-start gap-3.5">
-            <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-emerald-400 ring-1 ring-slate-700">
-              <i data-lucide="clipboard-check" class="h-4 w-4" aria-hidden="true"></i>
-            </span>
-            <div>
-              <p class="text-sm font-semibold text-white">Workflow Peminjaman &amp; Approval</p>
-              <p class="text-xs text-slate-400 mt-0.5">Pengajuan peminjaman terstruktur dengan pembaruan status aset otomatis.</p>
-            </div>
-          </li>
-          <li class="flex items-start gap-3.5">
-            <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-amber-400 ring-1 ring-slate-700">
-              <i data-lucide="line-chart" class="h-4 w-4" aria-hidden="true"></i>
-            </span>
-            <div>
-              <p class="text-sm font-semibold text-white">Monitoring Kondisi &amp; Penyusutan</p>
-              <p class="text-xs text-slate-400 mt-0.5">Laporan nilai buku metode garis lurus dan jadwal pemeliharaan berkala.</p>
-            </div>
-          </li>
-        </ul>
+        <dl class="mt-10 divide-y divide-white/15 border-y border-white/15 text-sm">
+          <div class="grid grid-cols-12 gap-3 py-4">
+            <dt class="col-span-2 font-mono text-xs text-slate-400 pt-0.5">01</dt>
+            <dd class="col-span-10">
+              <p class="font-medium text-white">Registrasi &amp; Kode QR Aset</p>
+              <p class="mt-0.5 text-xs text-slate-300">Penomoran terstandar <span class="font-mono text-slate-200">LAB-KOM-2024-001</span> siap cetak label.</p>
+            </dd>
+          </div>
+          <div class="grid grid-cols-12 gap-3 py-4">
+            <dt class="col-span-2 font-mono text-xs text-slate-400 pt-0.5">02</dt>
+            <dd class="col-span-10">
+              <p class="font-medium text-white">Persetujuan Peminjaman</p>
+              <p class="mt-0.5 text-xs text-slate-300">Status perangkat diperbarui otomatis saat disetujui maupun dikembalikan.</p>
+            </dd>
+          </div>
+          <div class="grid grid-cols-12 gap-3 py-4">
+            <dt class="col-span-2 font-mono text-xs text-slate-400 pt-0.5">03</dt>
+            <dd class="col-span-10">
+              <p class="font-medium text-white">Pemeliharaan &amp; Penyusutan</p>
+              <p class="mt-0.5 text-xs text-slate-300">Pelaporan kerusakan dan kalkulasi nilai buku metode garis lurus.</p>
+            </dd>
+          </div>
+        </dl>
       </div>
 
-      <div class="relative z-10 flex items-center justify-between border-t border-slate-800 pt-6 text-xs text-slate-400">
-        <span>Kelompok 3 RPL &mdash; Universitas Hasanuddin</span>
-        <span class="font-mono text-slate-500">v1.0</span>
+      <div class="flex items-center justify-between border-t border-white/15 pt-5 font-mono text-[11px] text-slate-400">
+        <span>KELOMPOK 3 RPL &middot; UNHAS</span>
+        <span>WITA (UTC+8)</span>
       </div>
     </aside>
 
-    <!-- Panel Kanan: Form Login -->
-    <main class="flex min-h-screen lg:min-h-0 lg:col-span-7 xl:col-span-6 flex-col justify-center px-4 py-8 sm:px-6 lg:px-12 xl:px-16">
-      <div class="mx-auto w-full max-w-md">
-        <!-- Brand Header Mobile -->
-        <div class="mb-6 flex items-center justify-center gap-3 lg:hidden">
-          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
-            <i data-lucide="boxes" class="h-5 w-5" aria-hidden="true"></i>
-          </div>
-          <div>
-            <p class="text-lg font-bold tracking-tight text-slate-900">LabTrack</p>
-            <p class="text-xs font-medium text-slate-500">Inventaris Lab UNHAS</p>
-          </div>
+    <!-- Panel Kanan: Form Autentikasi -->
+    <main class="flex min-h-screen lg:min-h-0 lg:col-span-7 flex-col justify-between bg-white px-5 py-8 sm:px-10 lg:px-16 xl:px-24">
+      <!-- Mobile Header -->
+      <div class="flex items-center justify-between border-b border-slate-200 pb-4 lg:hidden">
+        <div class="flex items-center gap-2.5">
+          <svg class="h-6 w-6 text-navy shrink-0" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+            <rect x="1.5" y="1.5" width="25" height="25" rx="3" stroke="currentColor" stroke-width="1.75"/>
+            <path d="M8 19V9h3.2M8 19h12M14 9v6M18 9v4" stroke="currentColor" stroke-width="1.75" stroke-linecap="square"/>
+            <rect x="18" y="15.5" width="3" height="3.5" fill="#B45309"/>
+          </svg>
+          <span class="text-base font-bold tracking-tight text-navy-ink">LabTrack</span>
+        </div>
+        <span class="font-mono text-[11px] uppercase tracking-wider text-slate-500">Lab UNHAS</span>
+      </div>
+
+      <div class="mx-auto my-auto w-full max-w-[400px] py-10 lg:py-0">
+        <div class="mb-8">
+          <p class="font-mono text-xs uppercase tracking-[0.14em] text-slate-500">Autentikasi</p>
+          <h2 class="mt-2 text-2xl font-bold tracking-tight text-slate-900">Masuk ke sistem</h2>
+          <p class="mt-1.5 text-sm text-slate-600">Masukkan kredensial akun laboratorium Anda.</p>
         </div>
 
-        <div class="rounded-xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
-          <div class="mb-6">
-            <h2 class="text-2xl font-bold tracking-tight text-slate-900">Masuk ke LabTrack</h2>
-            <p class="mt-1.5 text-sm text-slate-600">Gunakan akun laboratorium Anda untuk mengakses sistem.</p>
+        <!-- Flash Messages -->
+        {% if messages %}
+        <div class="mb-6 space-y-2.5" aria-live="polite">
+          {% for message in messages %}
+          <div role="status" class="border-l-2 px-3.5 py-2.5 text-sm {% if message.tags == 'error' %}border-red-700 bg-red-50 text-red-900{% elif message.tags == 'warning' %}border-amber-700 bg-amber-50 text-amber-900{% elif message.tags == 'success' %}border-emerald-700 bg-emerald-50 text-emerald-900{% else %}border-navy bg-slate-50 text-slate-800{% endif %}">
+            {{ message }}
           </div>
+          {% endfor %}
+        </div>
+        {% endif %}
 
-          <!-- Flash Messages (mis. sukses logout) -->
-          {% if messages %}
-          <div class="mb-5 space-y-2.5" aria-live="polite">
-            {% for message in messages %}
-            <div role="status" class="flex items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm ring-1 {% if message.tags == 'error' %}bg-rose-50 text-rose-800 ring-rose-200{% elif message.tags == 'warning' %}bg-amber-50 text-amber-800 ring-amber-200{% elif message.tags == 'success' %}bg-emerald-50 text-emerald-800 ring-emerald-200{% else %}bg-sky-50 text-sky-800 ring-sky-200{% endif %}">
-              <i data-lucide="{% if message.tags == 'error' %}alert-circle{% elif message.tags == 'success' %}check-circle-2{% else %}info{% endif %}" class="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true"></i>
-              <span>{{ message }}</span>
-            </div>
-            {% endfor %}
-          </div>
+        <!-- Error Summary Server-Side -->
+        {% if error_message %}
+        <div id="form-error-summary" role="alert" tabindex="-1" class="mb-6 border-l-2 border-red-700 bg-red-50 px-3.5 py-3 text-sm text-red-900 focus:outline-none focus:ring-2 focus:ring-red-700">
+          <p class="font-semibold">Autentikasi gagal</p>
+          <p class="mt-0.5 text-red-800">{{ error_message }}</p>
+        </div>
+        {% endif %}
+
+        <form id="login-form" method="post" action="{% url 'login' %}" class="space-y-5">
+          {% csrf_token %}
+          {% if next %}
+          <input type="hidden" name="next" value="{{ next }}">
           {% endif %}
 
-          <!-- Error Summary Server-Side -->
-          {% if error_message %}
-          <div id="form-error-summary" role="alert" tabindex="-1" class="mb-5 flex items-start gap-2.5 rounded-lg bg-rose-50 px-3.5 py-3 text-sm text-rose-800 ring-1 ring-rose-200 focus:outline-none focus:ring-2 focus:ring-rose-500">
-            <i data-lucide="alert-triangle" class="mt-0.5 h-4 w-4 shrink-0 text-rose-600" aria-hidden="true"></i>
-            <div>
-              <p class="font-semibold text-rose-900">Gagal Masuk</p>
-              <p class="mt-0.5">{{ error_message }}</p>
-            </div>
-          </div>
-          {% endif %}
-
-          <form id="login-form" method="post" action="{% url 'login' %}" class="space-y-5">
-            {% csrf_token %}
-            {% if next %}
-            <input type="hidden" name="next" value="{{ next }}">
-            {% endif %}
-
-            <!-- Username -->
-            <div class="field-group">
-              <label for="username" class="block text-sm font-medium text-slate-700 mb-1.5">
-                Username <span class="text-rose-600" aria-hidden="true">*</span>
-              </label>
-              <div class="relative">
-                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
-                  <i data-lucide="user" class="h-4 w-4" aria-hidden="true"></i>
-                </span>
-                <input
-                  type="text"
-                  id="username"
-                  name="username"
-                  value="{{ username }}"
-                  autocomplete="username"
-                  autocorrect="off"
-                  autocapitalize="none"
-                  spellcheck="false"
-                  enterkeyhint="next"
-                  required
-                  data-error="username-error"
-                  {% if field_errors.username %}aria-invalid="true" aria-describedby="username-server-error"{% else %}aria-invalid="false"{% endif %}
-                  placeholder="Contoh: admin_lab"
-                  class="block w-full min-h-[48px] rounded-lg border {% if field_errors.username %}border-rose-500 bg-rose-50/40{% else %}border-slate-300 bg-white{% endif %} pl-10 pr-3.5 py-2.5 text-base text-slate-900 placeholder:text-slate-400 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-              </div>
-              {% if field_errors.username %}
-              <p id="username-server-error" class="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-rose-700">
-                <i data-lucide="alert-circle" class="h-3.5 w-3.5 shrink-0" aria-hidden="true"></i>
-                <span>{{ field_errors.username }}</span>
-              </p>
-              {% endif %}
-              <p id="username-error" class="client-error-msg mt-1.5 items-center gap-1.5 text-xs font-medium text-rose-700">
-                <i data-lucide="alert-circle" class="h-3.5 w-3.5 shrink-0" aria-hidden="true"></i>
-                <span>Username wajib diisi.</span>
-              </p>
-            </div>
-
-            <!-- Password -->
-            <div class="field-group">
-              <label for="password" class="block text-sm font-medium text-slate-700 mb-1.5">
-                Password <span class="text-rose-600" aria-hidden="true">*</span>
-              </label>
-              <div class="relative">
-                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
-                  <i data-lucide="lock" class="h-4 w-4" aria-hidden="true"></i>
-                </span>
-                <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  autocomplete="current-password"
-                  enterkeyhint="done"
-                  required
-                  data-error="password-error"
-                  {% if field_errors.password %}aria-invalid="true" aria-describedby="password-server-error"{% else %}aria-invalid="false"{% endif %}
-                  placeholder="Masukkan password Anda"
-                  class="block w-full min-h-[48px] rounded-lg border {% if field_errors.password %}border-rose-500 bg-rose-50/40{% else %}border-slate-300 bg-white{% endif %} pl-10 pr-12 py-2.5 text-base text-slate-900 placeholder:text-slate-400 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                <button
-                  type="button"
-                  id="toggle-password"
-                  aria-pressed="false"
-                  aria-label="Tampilkan password"
-                  class="absolute inset-y-0 right-0 flex min-w-[44px] items-center justify-center rounded-r-lg px-3 text-slate-500 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
-                >
-                  <i data-lucide="eye" id="icon-eye" class="h-4 w-4" aria-hidden="true"></i>
-                  <i data-lucide="eye-off" id="icon-eye-off" class="hidden h-4 w-4" aria-hidden="true"></i>
-                </button>
-              </div>
-              {% if field_errors.password %}
-              <p id="password-server-error" class="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-rose-700">
-                <i data-lucide="alert-circle" class="h-3.5 w-3.5 shrink-0" aria-hidden="true"></i>
-                <span>{{ field_errors.password }}</span>
-              </p>
-              {% endif %}
-              <p id="password-error" class="client-error-msg mt-1.5 items-center gap-1.5 text-xs font-medium text-rose-700">
-                <i data-lucide="alert-circle" class="h-3.5 w-3.5 shrink-0" aria-hidden="true"></i>
-                <span>Password wajib diisi.</span>
-              </p>
-            </div>
-
-            <button
-              type="submit"
-              id="submit-btn"
-              class="inline-flex w-full min-h-[48px] items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          <!-- Username -->
+          <div class="field-group">
+            <label for="username" class="block text-sm font-medium text-slate-800 mb-1.5">
+              Username
+            </label>
+            <input
+              type="text"
+              id="username"
+              name="username"
+              value="{{ username }}"
+              autocomplete="username"
+              autocorrect="off"
+              autocapitalize="none"
+              spellcheck="false"
+              enterkeyhint="next"
+              required
+              data-error="username-error"
+              {% if field_errors.username %}aria-invalid="true" aria-describedby="username-server-error"{% else %}aria-invalid="false"{% endif %}
+              placeholder="admin_lab"
+              class="block w-full min-h-[48px] rounded-md border {% if field_errors.username %}border-red-700 bg-red-50/40{% else %}border-slate-300 bg-white{% endif %} px-3.5 py-2.5 text-base text-slate-900 placeholder:text-slate-400 transition-colors focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/20"
             >
-              <i data-lucide="log-in" class="h-4 w-4" aria-hidden="true"></i>
-              <span>Masuk ke Sistem</span>
-            </button>
-          </form>
-        </div>
-
-        <!-- Boks Akun Demo Presentasi -->
-        <section aria-labelledby="demo-accounts-heading" class="mt-5 rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
-          <div class="flex items-center justify-between gap-2 mb-3">
-            <div class="flex items-center gap-2">
-              <i data-lucide="sparkles" class="h-4 w-4 text-blue-600" aria-hidden="true"></i>
-              <h3 id="demo-accounts-heading" class="text-xs font-semibold uppercase tracking-wider text-slate-600">
-                Akun Demo Presentasi
-              </h3>
-            </div>
-            <span class="text-xs text-slate-500">Klik untuk autofill</span>
+            {% if field_errors.username %}
+            <p id="username-server-error" class="mt-1.5 text-xs font-medium text-red-700">
+              {{ field_errors.username }}
+            </p>
+            {% endif %}
+            <p id="username-error" class="client-error-msg mt-1.5 text-xs font-medium text-red-700">
+              Username wajib diisi.
+            </p>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <!-- Password -->
+          <div class="field-group">
+            <label for="password" class="block text-sm font-medium text-slate-800 mb-1.5">
+              Password
+            </label>
+            <div class="relative">
+              <input
+                type="password"
+                id="password"
+                name="password"
+                autocomplete="current-password"
+                enterkeyhint="done"
+                required
+                data-error="password-error"
+                {% if field_errors.password %}aria-invalid="true" aria-describedby="password-server-error"{% else %}aria-invalid="false"{% endif %}
+                placeholder="••••••••"
+                class="block w-full min-h-[48px] rounded-md border {% if field_errors.password %}border-red-700 bg-red-50/40{% else %}border-slate-300 bg-white{% endif %} pl-3.5 pr-12 py-2.5 text-base text-slate-900 placeholder:text-slate-400 transition-colors focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/20"
+              >
+              <button
+                type="button"
+                id="toggle-password"
+                aria-pressed="false"
+                aria-label="Tampilkan password"
+                class="absolute inset-y-0 right-0 flex min-w-[44px] cursor-pointer items-center justify-center rounded-r-md px-3 text-slate-500 transition-colors hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-navy"
+              >
+                <i data-lucide="eye" id="icon-eye" class="h-4 w-4" aria-hidden="true"></i>
+                <i data-lucide="eye-off" id="icon-eye-off" class="hidden h-4 w-4" aria-hidden="true"></i>
+              </button>
+            </div>
+            {% if field_errors.password %}
+            <p id="password-server-error" class="mt-1.5 text-xs font-medium text-red-700">
+              {{ field_errors.password }}
+            </p>
+            {% endif %}
+            <p id="password-error" class="client-error-msg mt-1.5 text-xs font-medium text-red-700">
+              Password wajib diisi.
+            </p>
+          </div>
+
+          <button
+            type="submit"
+            id="submit-btn"
+            class="inline-flex w-full min-h-[48px] cursor-pointer items-center justify-center rounded-md bg-navy px-4 py-2.5 text-base font-semibold text-white transition-colors hover:bg-navy-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Masuk ke Sistem
+          </button>
+        </form>
+
+        <!-- Akun Demo Presentasi (Hairline Strip, tanpa kartu bertumpuk) -->
+        <section aria-labelledby="demo-accounts-heading" class="mt-9 border-t border-slate-200 pt-6">
+          <div class="flex items-baseline justify-between mb-3">
+            <h3 id="demo-accounts-heading" class="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Akun Demo Presentasi
+            </h3>
+            <span class="text-xs text-slate-500">Klik untuk isi otomatis</span>
+          </div>
+
+          <div class="grid grid-cols-3 divide-x divide-slate-200 overflow-hidden rounded-md border border-slate-200 bg-paper">
             <button
               type="button"
               data-demo-user="admin_lab"
               data-demo-pass="AdminLab123!"
-              class="demo-fill-btn group flex flex-col items-start rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2.5 text-left transition-colors hover:border-blue-300 hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              class="demo-fill-btn cursor-pointer px-3 py-2.5 text-left transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-navy"
             >
-              <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 ring-1 ring-blue-200">
-                ADMIN
-              </span>
-              <span class="mt-1.5 font-mono text-xs font-medium text-slate-800 group-hover:text-blue-700">admin_lab</span>
+              <span class="block text-[11px] font-semibold uppercase tracking-wider text-navy">Admin</span>
+              <span class="mt-0.5 block truncate font-mono text-xs text-slate-700">admin_lab</span>
             </button>
 
             <button
               type="button"
               data-demo-user="teknisi_lab"
               data-demo-pass="TeknisiLab123!"
-              class="demo-fill-btn group flex flex-col items-start rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2.5 text-left transition-colors hover:border-blue-300 hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              class="demo-fill-btn cursor-pointer px-3 py-2.5 text-left transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-navy"
             >
-              <span class="inline-flex items-center rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700 ring-1 ring-sky-200">
-                TEKNISI
-              </span>
-              <span class="mt-1.5 font-mono text-xs font-medium text-slate-800 group-hover:text-blue-700">teknisi_lab</span>
+              <span class="block text-[11px] font-semibold uppercase tracking-wider text-ochre">Teknisi</span>
+              <span class="mt-0.5 block truncate font-mono text-xs text-slate-700">teknisi_lab</span>
             </button>
 
             <button
               type="button"
               data-demo-user="mhs_andi"
               data-demo-pass="Peminjam123!"
-              class="demo-fill-btn group flex flex-col items-start rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2.5 text-left transition-colors hover:border-blue-300 hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              class="demo-fill-btn cursor-pointer px-3 py-2.5 text-left transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-navy"
             >
-              <span class="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
-                PEMINJAM
-              </span>
-              <span class="mt-1.5 font-mono text-xs font-medium text-slate-800 group-hover:text-blue-700">mhs_andi</span>
+              <span class="block text-[11px] font-semibold uppercase tracking-wider text-slate-700">Peminjam</span>
+              <span class="mt-0.5 block truncate font-mono text-xs text-slate-700">mhs_andi</span>
             </button>
           </div>
         </section>
       </div>
+
+      <footer class="border-t border-slate-100 pt-4 text-center font-mono text-[11px] text-slate-400 lg:text-left">
+        LabTrack &mdash; Sistem Informasi Inventaris Laboratorium
+      </footer>
     </main>
   </div>
 
@@ -336,7 +324,6 @@
         serverErrorSummary.focus();
       }
 
-      // Toggle show/hide password dengan aria-pressed & aria-label dinamis
       if (toggleBtn && passwordInput) {
         toggleBtn.addEventListener('click', () => {
           const isHidden = passwordInput.type === 'password';
@@ -348,7 +335,6 @@
         });
       }
 
-      // Sinkronisasi :user-invalid dengan aria-invalid, aria-describedby, dan live region
       const supportsUserInvalid = CSS.supports('selector(:user-invalid)');
       const announcer = document.createElement('div');
       announcer.setAttribute('aria-live', 'polite');
@@ -438,14 +424,12 @@
         syncAria(el);
       }, true);
 
-      // Cegah double-submit hanya setelah form valid
       form.addEventListener('submit', () => {
         if (form.checkValidity() && submitBtn) {
           submitBtn.disabled = true;
         }
       });
 
-      // Quick autofill akun demo presentasi
       document.querySelectorAll('.demo-fill-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
           usernameInput.value = btn.dataset.demoUser || '';
