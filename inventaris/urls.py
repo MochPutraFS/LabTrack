@@ -29,8 +29,14 @@ urlpatterns = [
     path('aset/<int:pk>/hapus/', views.aset_delete, name='aset_delete'),
     path('aset/<int:pk>/cetak-qr/', views.aset_print_qr, name='aset_print_qr'),
 
-    # Placeholder routes untuk modul S05-S07
-    path('peminjaman/', views.module_placeholder, {'title': 'Peminjaman'}, name='peminjaman_list'),
+    # Peminjaman & Pengembalian Aset
+    path('peminjaman/', views.peminjaman_list, name='peminjaman_list'),
+    path('peminjaman/ajukan/', views.peminjaman_ajukan, name='peminjaman_ajukan'),
+    path('peminjaman/<int:pk>/setujui/', views.peminjaman_setujui, name='peminjaman_setujui'),
+    path('peminjaman/<int:pk>/tolak/', views.peminjaman_tolak, name='peminjaman_tolak'),
+    path('peminjaman/<int:pk>/kembalikan/', views.peminjaman_kembalikan, name='peminjaman_kembalikan'),
+
+    # Placeholder routes untuk modul S06-S07
     path('kerusakan/', views.module_placeholder, {'title': 'Laporan Kerusakan'}, name='kerusakan_list'),
     path('pemeliharaan/', views.module_placeholder, {'title': 'Jadwal Pemeliharaan'}, name='pemeliharaan_list'),
     path(

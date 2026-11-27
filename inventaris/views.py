@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Count, ProtectedError, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -11,7 +12,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from .decorators import role_required
-from .forms import AsetForm, KategoriAsetForm, LokasiLabForm
+from .forms import AsetForm, KategoriAsetForm, LokasiLabForm, PeminjamanForm, PengembalianForm
 from .models import Aset, JadwalPemeliharaan, KategoriAset, LaporanKerusakan, LokasiLab, Peminjaman
 from .services import generate_aset_qr
 
@@ -401,7 +402,154 @@ def aset_print_qr_massal(request):
 
 
 # ---------------------------------------------------------------------------
-# Placeholder routes untuk modul S05-S07
+# Peminjaman & Pengembalian Aset
+# ---------------------------------------------------------------------------
+
+def _generate_kode_peminjaman():
+    today = timezone.localdate()
+    prefix = f'PJM-{today:%Y%m}-'
+    last = Peminjaman.objects.filter(kode_peminjaman__startswith=prefix).order_by('-kode_peminjaman').first()
+    seq = int(last.kode_peminjaman.split('-')[-1]) + 1 if last else 1
+    return f'{prefix}{seq:03d}'
+
+
+@login_required
+def peminjaman_list(request):
+    profile = getattr(request.user, 'profile', None)
+    role = profile.role if profile else ('ADMIN' if request.user.is_superuser else 'PEMINJAM')
+
+    qs = Peminjaman.objects.select_related('aset', 'peminjam', 'disetujui_oleh').order_by('-created_at')
+    if role not in ('ADMIN', 'TEKNISI'):
+        qs = qs.filter(peminjam=request.user)
+
+    status_filter = request.GET.get('status', '').strip()
+    if status_filter in dict(Peminjaman.STATUS_CHOICES):
+        qs = qs.filter(status=status_filter)
+
+    paginator = Paginator(qs, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    return render(request, 'inventaris/peminjaman/list.html', {
+        'page_obj': page_obj,
+        'status_filter': status_filter,
+        'status_choices': Peminjaman.STATUS_CHOICES,
+        'today': timezone.localdate(),
+    })
+
+
+@login_required
+def peminjaman_ajukan(request):
+    initial = {}
+    aset_id = request.GET.get('aset')
+    if aset_id and aset_id.isdigit():
+        aset_obj = Aset.objects.filter(pk=int(aset_id), status='TERSEDIA').exclude(kondisi='RUSAK_BERAT').first()
+        if aset_obj:
+            initial['aset'] = aset_obj.pk
+
+    form = PeminjamanForm(request.POST or None, initial=initial)
+    if request.method == 'POST' and form.is_valid():
+        peminjaman = form.save(commit=False)
+        peminjaman.peminjam = request.user
+        peminjaman.status = 'MENUNGGU'
+        peminjaman.kode_peminjaman = _generate_kode_peminjaman()
+        peminjaman.save()
+        messages.success(request, f'Pengajuan peminjaman {peminjaman.kode_peminjaman} berhasil dikirim dan menunggu persetujuan.')
+        return redirect('peminjaman_list')
+
+    return render(request, 'inventaris/peminjaman/ajukan.html', {'form': form})
+
+
+@require_POST
+@role_required('ADMIN')
+def peminjaman_setujui(request, pk):
+    with transaction.atomic():
+        peminjaman = get_object_or_404(Peminjaman.objects.select_for_update(), pk=pk)
+        aset = Aset.objects.select_for_update().get(pk=peminjaman.aset_id)
+
+        if peminjaman.status != 'MENUNGGU':
+            messages.error(request, f'Peminjaman {peminjaman.kode_peminjaman} tidak berada dalam status menunggu.')
+            return redirect('peminjaman_list')
+
+        if aset.status != 'TERSEDIA' or aset.kondisi == 'RUSAK_BERAT':
+            messages.error(
+                request,
+                f'Aset {aset.kode_aset} sedang tidak tersedia (status: {aset.get_status_display()}).',
+            )
+            return redirect('peminjaman_list')
+
+        peminjaman.status = 'DISETUJUI'
+        peminjaman.disetujui_oleh = request.user
+        peminjaman.save()
+
+        aset.status = 'DIPINJAM'
+        aset.save(update_fields=['status', 'updated_at'])
+
+    messages.success(request, f'Peminjaman {peminjaman.kode_peminjaman} disetujui. Status aset berubah menjadi Dipinjam.')
+    return redirect('peminjaman_list')
+
+
+@role_required('ADMIN')
+def peminjaman_tolak(request, pk):
+    peminjaman = get_object_or_404(Peminjaman.objects.select_related('aset', 'peminjam'), pk=pk)
+    if peminjaman.status != 'MENUNGGU':
+        messages.error(request, f'Peminjaman {peminjaman.kode_peminjaman} tidak dapat ditolak pada status saat ini.')
+        return redirect('peminjaman_list')
+
+    if request.method == 'POST':
+        alasan = request.POST.get('catatan_admin', '').strip()
+        with transaction.atomic():
+            locked = Peminjaman.objects.select_for_update().get(pk=pk)
+            if locked.status == 'MENUNGGU':
+                locked.status = 'DITOLAK'
+                locked.catatan_admin = alasan
+                locked.disetujui_oleh = request.user
+                locked.save()
+        messages.success(request, f'Peminjaman {peminjaman.kode_peminjaman} telah ditolak.')
+        return redirect('peminjaman_list')
+
+    return render(request, 'inventaris/peminjaman/tolak.html', {'peminjaman': peminjaman})
+
+
+@role_required('ADMIN')
+def peminjaman_kembalikan(request, pk):
+    peminjaman = get_object_or_404(Peminjaman.objects.select_related('aset', 'peminjam'), pk=pk)
+    if peminjaman.status != 'DISETUJUI':
+        messages.error(request, f'Peminjaman {peminjaman.kode_peminjaman} belum berstatus Disetujui.')
+        return redirect('peminjaman_list')
+
+    form = PengembalianForm(request.POST or None, instance=peminjaman)
+    if request.method == 'POST' and form.is_valid():
+        with transaction.atomic():
+            locked = Peminjaman.objects.select_for_update().get(pk=pk)
+            aset = Aset.objects.select_for_update().get(pk=locked.aset_id)
+            if locked.status != 'DISETUJUI':
+                messages.error(request, 'Status peminjaman sudah berubah.')
+                return redirect('peminjaman_list')
+
+            locked.tanggal_kembali_aktual = form.cleaned_data['tanggal_kembali_aktual']
+            locked.kondisi_saat_kembali = form.cleaned_data['kondisi_saat_kembali']
+            locked.catatan_admin = form.cleaned_data['catatan_admin']
+            locked.status = 'DIKEMBALIKAN'
+            locked.save()
+
+            aset.kondisi = locked.kondisi_saat_kembali
+            aset.status = 'PEMELIHARAAN' if locked.kondisi_saat_kembali == 'RUSAK_BERAT' else 'TERSEDIA'
+            aset.save(update_fields=['kondisi', 'status', 'updated_at'])
+
+        messages.success(
+            request,
+            f'Pengembalian {peminjaman.kode_peminjaman} berhasil dicatat. Status aset kini {aset.get_status_display()}.',
+        )
+        return redirect('peminjaman_list')
+
+    return render(request, 'inventaris/peminjaman/kembalikan.html', {
+        'peminjaman': peminjaman,
+        'form': form,
+    })
+
+
+# ---------------------------------------------------------------------------
+# Placeholder routes untuk modul S06-S07
 # ---------------------------------------------------------------------------
 
 @login_required

@@ -40,7 +40,7 @@
   </dl>
 
   <div class="mt-6 space-y-2.5 border-t border-line pt-5">
-    <a href="{% url 'peminjaman_list' %}?aset={{ aset.pk }}" class="flex w-full min-h-[44px] items-center justify-center rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-stone-800">
+    <a href="{% url 'peminjaman_ajukan' %}?aset={{ aset.pk }}" class="flex w-full min-h-[44px] items-center justify-center rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-stone-800">
       Ajukan Pinjam
     </a>
     <a href="{% url 'kerusakan_list' %}?aset={{ aset.pk }}" class="flex w-full min-h-[44px] items-center justify-center rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-ink hover:bg-canvas">

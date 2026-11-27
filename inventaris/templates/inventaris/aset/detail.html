@@ -23,6 +23,11 @@
     </div>
 
     <div class="flex flex-wrap items-center gap-2">
+      {% if aset.status == 'TERSEDIA' and aset.kondisi != 'RUSAK_BERAT' %}
+      <a href="{% url 'peminjaman_ajukan' %}?aset={{ aset.pk }}" class="rounded-md bg-ink px-3.5 py-2 text-sm font-medium text-white hover:bg-stone-800">
+        Ajukan Pinjam
+      </a>
+      {% endif %}
       <a href="{% url 'aset_print_qr' aset.pk %}" class="inline-flex items-center gap-1.5 rounded-md border border-stone-300 bg-white px-3.5 py-2 text-sm font-medium text-ink hover:bg-canvas">
         <i data-lucide="printer" class="h-4 w-4" aria-hidden="true"></i>
         <span>Cetak Label QR</span>

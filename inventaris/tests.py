@@ -331,3 +331,125 @@ class MasterAsetAndQRTests(TestCase):
         # Peminjam tidak boleh membuat aset
         blocked = self.client.get(reverse('aset_create'))
         self.assertRedirects(blocked, reverse('dashboard'))
+
+
+class PeminjamanWorkflowTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user('admin_lab', 'admin@example.com', 'AdminLab123!')
+        UserProfile.objects.create(
+            user=self.admin, role='ADMIN', nomor_identitas='NIP-001', unit_prodi='Lab Terpadu'
+        )
+        self.peminjam1 = User.objects.create_user('mhs_andi', 'andi@example.com', 'Peminjam123!')
+        UserProfile.objects.create(
+            user=self.peminjam1, role='PEMINJAM', nomor_identitas='H071221001', unit_prodi='Sistem Informasi'
+        )
+        self.peminjam2 = User.objects.create_user('mhs_sari', 'sari@example.com', 'Peminjam123!')
+        UserProfile.objects.create(
+            user=self.peminjam2, role='PEMINJAM', nomor_identitas='H071221002', unit_prodi='Sistem Informasi'
+        )
+        self.kategori = KategoriAset.objects.create(kode='KOM', nama='Komputer')
+        self.lokasi = LokasiLab.objects.create(
+            kode_ruang='LAB-01', nama_ruang='Lab RPL', gedung='Gedung A', penanggung_jawab='Admin'
+        )
+        self.aset = Aset.objects.create(
+            nama_aset='Kamera Sony A6400',
+            kategori=self.kategori,
+            lokasi=self.lokasi,
+            merk_tipe='Sony Alpha',
+            tanggal_perolehan=date(2025, 1, 1),
+            harga_perolehan=Decimal('14000000'),
+            nilai_residu=Decimal('2000000'),
+            umur_ekonomis_tahun=5,
+            kondisi='BAIK',
+            status='TERSEDIA',
+        )
+
+    def test_borrow_approve_prevent_double_booking_and_return(self):
+        today = timezone.localdate()
+
+        # Peminjam 1 dan Peminjam 2 sama-sama mengajukan saat aset masih TERSEDIA
+        self.client.force_login(self.peminjam1)
+        resp1 = self.client.post(reverse('peminjaman_ajukan'), {
+            'aset': self.aset.pk,
+            'tanggal_pinjam': today.isoformat(),
+            'tanggal_rencana_kembali': (today + timedelta(days=2)).isoformat(),
+            'keperluan': 'Dokumentasi praktikum',
+        }, follow=True)
+        self.assertRedirects(resp1, reverse('peminjaman_list'))
+        p1 = Peminjaman.objects.get(peminjam=self.peminjam1)
+        self.assertEqual(p1.status, 'MENUNGGU')
+        self.assertTrue(p1.kode_peminjaman.startswith('PJM-'))
+
+        self.client.force_login(self.peminjam2)
+        self.client.post(reverse('peminjaman_ajukan'), {
+            'aset': self.aset.pk,
+            'tanggal_pinjam': today.isoformat(),
+            'tanggal_rencana_kembali': (today + timedelta(days=2)).isoformat(),
+            'keperluan': 'Liputan kegiatan',
+        }, follow=True)
+        p2 = Peminjaman.objects.get(peminjam=self.peminjam2)
+
+        # Peminjam 1 hanya melihat peminjamannya sendiri
+        self.client.force_login(self.peminjam1)
+        list_p1 = self.client.get(reverse('peminjaman_list'))
+        self.assertContains(list_p1, p1.kode_peminjaman)
+        self.assertNotContains(list_p1, p2.kode_peminjaman)
+
+        # Admin menyetujui p1 -> aset menjadi DIPINJAM
+        self.client.force_login(self.admin)
+        approve_p1 = self.client.post(reverse('peminjaman_setujui', args=[p1.pk]))
+        self.assertRedirects(approve_p1, reverse('peminjaman_list'))
+        p1.refresh_from_db()
+        self.aset.refresh_from_db()
+        self.assertEqual(p1.status, 'DISETUJUI')
+        self.assertEqual(p1.disetujui_oleh, self.admin)
+        self.assertEqual(self.aset.status, 'DIPINJAM')
+
+        # Admin mencoba menyetujui p2 untuk aset yang sama -> ditolak sistem (cegah double-booking)
+        approve_p2 = self.client.post(reverse('peminjaman_setujui', args=[p2.pk]), follow=True)
+        self.assertRedirects(approve_p2, reverse('peminjaman_list'))
+        p2.refresh_from_db()
+        self.assertEqual(p2.status, 'MENUNGGU')
+        self.assertContains(approve_p2, 'sedang tidak tersedia')
+
+        # Tolak p2 dengan alasan
+        reject_p2 = self.client.post(reverse('peminjaman_tolak', args=[p2.pk]), {
+            'catatan_admin': 'Aset sedang dipinjam pengguna lain.',
+        })
+        self.assertRedirects(reject_p2, reverse('peminjaman_list'))
+        p2.refresh_from_db()
+        self.assertEqual(p2.status, 'DITOLAK')
+        self.assertEqual(p2.catatan_admin, 'Aset sedang dipinjam pengguna lain.')
+
+        # Kembalikan p1 dengan kondisi RUSAK_BERAT -> aset menjadi PEMELIHARAAN
+        ret = self.client.post(reverse('peminjaman_kembalikan', args=[p1.pk]), {
+            'tanggal_kembali_aktual': today.isoformat(),
+            'kondisi_saat_kembali': 'RUSAK_BERAT',
+            'catatan_admin': 'Lensa retak saat pengembalian',
+        })
+        self.assertRedirects(ret, reverse('peminjaman_list'))
+        p1.refresh_from_db()
+        self.aset.refresh_from_db()
+        self.assertEqual(p1.status, 'DIKEMBALIKAN')
+        self.assertEqual(self.aset.kondisi, 'RUSAK_BERAT')
+        self.assertEqual(self.aset.status, 'PEMELIHARAAN')
+
+    def test_overdue_badge_and_non_admin_blocked(self):
+        today = timezone.localdate()
+        overdue = Peminjaman.objects.create(
+            kode_peminjaman='PJM-202611-999',
+            aset=self.aset,
+            peminjam=self.peminjam1,
+            disetujui_oleh=self.admin,
+            tanggal_pinjam=today - timedelta(days=5),
+            tanggal_rencana_kembali=today - timedelta(days=1),
+            keperluan='Pengujian',
+            status='DISETUJUI',
+        )
+        self.client.force_login(self.admin)
+        resp = self.client.get(reverse('peminjaman_list'))
+        self.assertContains(resp, 'Terlambat')
+
+        self.client.force_login(self.peminjam1)
+        blocked = self.client.post(reverse('peminjaman_setujui', args=[overdue.pk]))
+        self.assertRedirects(blocked, reverse('dashboard'))

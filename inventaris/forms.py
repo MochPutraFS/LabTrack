@@ -1,6 +1,7 @@
 from django import forms
+from django.utils import timezone
 
-from .models import Aset, KategoriAset, LokasiLab
+from .models import Aset, KategoriAset, LokasiLab, Peminjaman
 
 INPUT_CLASS = (
     'block w-full min-h-[42px] rounded-md border border-stone-300 bg-white px-3.5 py-2 '
@@ -145,3 +146,72 @@ class AsetForm(StyledFormMixin, forms.ModelForm):
         if harga is not None and residu is not None and residu > harga:
             self.add_error('nilai_residu', 'Nilai residu tidak boleh melebihi harga perolehan.')
         return cleaned
+
+
+class PeminjamanForm(StyledFormMixin, forms.ModelForm):
+    class Meta:
+        model = Peminjaman
+        fields = ['aset', 'tanggal_pinjam', 'tanggal_rencana_kembali', 'keperluan']
+        labels = {
+            'aset': 'Aset Laboratorium',
+            'tanggal_pinjam': 'Tanggal Pinjam',
+            'tanggal_rencana_kembali': 'Tanggal Rencana Kembali',
+            'keperluan': 'Keperluan Peminjaman',
+        }
+        widgets = {
+            'tanggal_pinjam': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'tanggal_rencana_kembali': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'keperluan': forms.Textarea(attrs={'placeholder': 'Tuliskan kegiatan atau keperluan penggunaan aset'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['aset'].queryset = (
+            Aset.objects.filter(status='TERSEDIA')
+            .exclude(kondisi='RUSAK_BERAT')
+            .select_related('lokasi')
+            .order_by('kode_aset')
+        )
+        self.fields['tanggal_pinjam'].input_formats = ['%Y-%m-%d']
+        self.fields['tanggal_rencana_kembali'].input_formats = ['%Y-%m-%d']
+        if not self.initial.get('tanggal_pinjam'):
+            self.initial['tanggal_pinjam'] = timezone.localdate()
+        self._apply_widget_styles()
+
+    def clean(self):
+        cleaned = super().clean()
+        aset = cleaned.get('aset')
+        tgl_pinjam = cleaned.get('tanggal_pinjam')
+        tgl_kembali = cleaned.get('tanggal_rencana_kembali')
+
+        if tgl_pinjam and tgl_kembali and tgl_kembali < tgl_pinjam:
+            self.add_error('tanggal_rencana_kembali', 'Tanggal rencana kembali tidak boleh lebih awal dari tanggal pinjam.')
+        if aset and (aset.status != 'TERSEDIA' or aset.kondisi == 'RUSAK_BERAT'):
+            self.add_error('aset', 'Aset yang dipilih saat ini tidak tersedia untuk dipinjam.')
+        return cleaned
+
+
+class PengembalianForm(StyledFormMixin, forms.ModelForm):
+    class Meta:
+        model = Peminjaman
+        fields = ['tanggal_kembali_aktual', 'kondisi_saat_kembali', 'catatan_admin']
+        labels = {
+            'tanggal_kembali_aktual': 'Tanggal Kembali Aktual',
+            'kondisi_saat_kembali': 'Kondisi Aset Saat Kembali',
+            'catatan_admin': 'Catatan Admin (Opsional)',
+        }
+        widgets = {
+            'tanggal_kembali_aktual': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'catatan_admin': forms.Textarea(attrs={'placeholder': 'Catatan kondisi atau kelengkapan saat pengembalian'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['tanggal_kembali_aktual'].required = True
+        self.fields['tanggal_kembali_aktual'].input_formats = ['%Y-%m-%d']
+        if not self.initial.get('tanggal_kembali_aktual'):
+            self.initial['tanggal_kembali_aktual'] = timezone.localdate()
+        self.fields['kondisi_saat_kembali'].required = True
+        self.fields['kondisi_saat_kembali'].choices = Peminjaman.KONDISI_KEMBALI_CHOICES
+        self.initial.setdefault('kondisi_saat_kembali', 'BAIK')
+        self._apply_widget_styles()
