@@ -1,0 +1,111 @@
+{% extends "inventaris/base.html" %}
+{% load inventaris_tags %}
+
+{% block title %}{{ laporan.kode_laporan }} — LabTrack{% endblock %}
+{% block page_title %}Detail Laporan Kerusakan{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
+  <section class="space-y-5 rounded-lg border border-line bg-white p-6 lg:col-span-7">
+    <div class="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
+      <div>
+        <p class="font-mono text-xs font-semibold uppercase tracking-wider text-muted">{{ laporan.kode_laporan }}</p>
+        <h2 class="mt-1 text-xl font-bold text-ink">{{ laporan.judul_kerusakan }}</h2>
+        <p class="mt-1 text-sm text-muted">
+          Aset: <a href="{% url 'aset_detail' laporan.aset.pk %}" class="font-medium text-ink hover:underline">{{ laporan.aset.kode_aset }} &mdash; {{ laporan.aset.nama_aset }}</a>
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="rounded px-2 py-0.5 text-xs font-medium {% if laporan.tingkat_keparahan == 'BERAT' %}border border-red-200 bg-red-50 text-red-800{% elif laporan.tingkat_keparahan == 'SEDANG' %}border border-amber-200 bg-amber-50 text-amber-800{% else %}border border-stone-300 bg-stone-100 text-stone-700{% endif %}">
+          {{ laporan.get_tingkat_keparahan_display }}
+        </span>
+        <span class="rounded px-2 py-0.5 text-xs font-medium {{ laporan.status|badge_status }}">
+          {{ laporan.get_status_display }}
+        </span>
+      </div>
+    </div>
+
+    <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2 text-sm">
+      <div>
+        <dt class="text-xs text-muted">Pelapor</dt>
+        <dd class="mt-0.5 font-medium text-ink">{{ laporan.pelapor.get_full_name|default:laporan.pelapor.username }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs text-muted">Tanggal Lapor</dt>
+        <dd class="mt-0.5 font-mono text-ink">{{ laporan.tanggal_lapor|date:"d M Y, H:i" }}</dd>
+      </div>
+      <div class="sm:col-span-2">
+        <dt class="text-xs text-muted">Deskripsi Kerusakan</dt>
+        <dd class="mt-1 text-ink whitespace-pre-line">{{ laporan.deskripsi }}</dd>
+      </div>
+      {% if laporan.catatan_penanganan %}
+      <div class="sm:col-span-2 rounded-md border border-line bg-canvas p-3.5">
+        <dt class="text-xs font-medium text-muted">Catatan Penanganan{% if laporan.ditangani_oleh %} ({{ laporan.ditangani_oleh.username }}){% endif %}</dt>
+        <dd class="mt-1 text-ink whitespace-pre-line">{{ laporan.catatan_penanganan }}</dd>
+      </div>
+      {% endif %}
+    </dl>
+
+    {% if laporan.foto_bukti %}
+    <div class="border-t border-line pt-4">
+      <p class="mb-2 text-xs text-muted">Foto Bukti</p>
+      <img src="{{ laporan.foto_bukti.url }}" alt="Bukti kerusakan {{ laporan.kode_laporan }}" class="max-h-64 rounded-md border border-line object-cover">
+    </div>
+    {% endif %}
+
+    {% if jadwal_terkait %}
+    <div class="border-t border-line pt-4">
+      <h3 class="text-sm font-semibold text-ink">Jadwal Perbaikan Terkait</h3>
+      <ul class="mt-2 divide-y divide-line text-xs">
+        {% for j in jadwal_terkait %}
+        <li class="flex items-center justify-between py-2">
+          <div>
+            <span class="font-mono font-medium text-ink">{{ j.kode_jadwal }}</span>
+            <span class="text-muted">&middot; {{ j.tanggal_jadwal|date:"d M Y" }}</span>
+          </div>
+          <span class="rounded px-2 py-0.5 text-[11px] font-medium {{ j.status|badge_status }}">{{ j.get_status_display }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- Panel Penanganan (ADMIN & TEKNISI) -->
+  <aside class="space-y-4 lg:col-span-5">
+    {% if can_manage %}
+    <div class="rounded-lg border border-line bg-white p-6">
+      <h3 class="text-sm font-semibold text-ink">Update Penanganan</h3>
+      <form method="post" class="mt-4 space-y-4">
+        {% csrf_token %}
+        {% for field in form %}
+        <div>
+          <label for="{{ field.id_for_label }}" class="mb-1.5 block text-sm font-medium text-ink">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}
+          <p class="mt-1 text-xs font-medium text-red-700">{{ field.errors.0 }}</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+        <button type="submit" class="w-full cursor-pointer rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-stone-800">
+          Simpan Penanganan
+        </button>
+      </form>
+
+      <div class="mt-4 border-t border-line pt-4">
+        <a
+          href="{% url 'pemeliharaan_create' %}?aset={{ laporan.aset_id }}&laporan={{ laporan.pk }}&jenis=KOREKTIF"
+          class="flex w-full items-center justify-center rounded-md border border-stone-300 bg-canvas px-4 py-2 text-sm font-medium text-ink hover:bg-stone-200/60"
+        >
+          Buat Jadwal Perbaikan Korektif
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+    <a href="{% url 'kerusakan_list' %}" class="inline-flex items-center rounded-md border border-stone-300 bg-white px-3.5 py-2 text-sm font-medium text-ink hover:bg-canvas">
+      Kembali ke Daftar
+    </a>
+  </aside>
+</div>
+{% endblock %}

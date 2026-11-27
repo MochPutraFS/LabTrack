@@ -453,3 +453,127 @@ class PeminjamanWorkflowTests(TestCase):
         self.client.force_login(self.peminjam1)
         blocked = self.client.post(reverse('peminjaman_setujui', args=[overdue.pk]))
         self.assertRedirects(blocked, reverse('dashboard'))
+
+
+class KerusakanAndPemeliharaanTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user('admin_lab', 'admin@example.com', 'AdminLab123!')
+        UserProfile.objects.create(
+            user=self.admin, role='ADMIN', nomor_identitas='NIP-001', unit_prodi='Lab Terpadu'
+        )
+        self.teknisi = User.objects.create_user('teknisi_lab', 'teknisi@example.com', 'TeknisiLab123!')
+        UserProfile.objects.create(
+            user=self.teknisi, role='TEKNISI', nomor_identitas='NIP-002', unit_prodi='Lab Terpadu'
+        )
+        self.peminjam = User.objects.create_user('mhs_andi', 'andi@example.com', 'Peminjam123!')
+        UserProfile.objects.create(
+            user=self.peminjam, role='PEMINJAM', nomor_identitas='H071221001', unit_prodi='Sistem Informasi'
+        )
+        self.kategori = KategoriAset.objects.create(kode='PRY', nama='Proyektor')
+        self.lokasi = LokasiLab.objects.create(
+            kode_ruang='LAB-01', nama_ruang='Lab RPL', gedung='Gedung A', penanggung_jawab='Admin'
+        )
+        self.aset = Aset.objects.create(
+            nama_aset='Proyektor Epson X1',
+            kategori=self.kategori,
+            lokasi=self.lokasi,
+            merk_tipe='Epson EB-X1',
+            tanggal_perolehan=date(2025, 1, 1),
+            harga_perolehan=Decimal('8000000'),
+            nilai_residu=Decimal('1000000'),
+            umur_ekonomis_tahun=5,
+            kondisi='BAIK',
+            status='TERSEDIA',
+        )
+
+    def test_end_to_end_damage_report_to_corrective_maintenance(self):
+        today = timezone.localdate()
+
+        # 1. Peminjam melapor kerusakan BERAT -> kondisi aset otomatis menjadi RUSAK_BERAT
+        self.client.force_login(self.peminjam)
+        lapor_resp = self.client.post(reverse('kerusakan_lapor'), {
+            'aset': self.aset.pk,
+            'judul_kerusakan': 'Lampu proyektor mati total',
+            'tingkat_keparahan': 'BERAT',
+            'deskripsi': 'Tidak tampil gambar dan indikator berkedip merah.',
+        })
+        laporan = LaporanKerusakan.objects.get(aset=self.aset)
+        self.assertRedirects(lapor_resp, reverse('kerusakan_detail', args=[laporan.pk]))
+        self.assertTrue(laporan.kode_laporan.startswith('RSK-'))
+        self.aset.refresh_from_db()
+        self.assertEqual(self.aset.kondisi, 'RUSAK_BERAT')
+
+        # Peminjam tidak boleh membuat jadwal pemeliharaan
+        blocked = self.client.get(reverse('pemeliharaan_create'))
+        self.assertRedirects(blocked, reverse('dashboard'))
+
+        # 2. Teknisi memperbarui status penanganan -> DIPROSES dan membuat jadwal korektif
+        self.client.force_login(self.teknisi)
+        self.client.post(reverse('kerusakan_detail', args=[laporan.pk]), {
+            'status': 'DIPROSES',
+            'catatan_penanganan': 'Perlu penggantian modul lampu.',
+        })
+        laporan.refresh_from_db()
+        self.assertEqual(laporan.status, 'DIPROSES')
+        self.assertEqual(laporan.ditangani_oleh, self.teknisi)
+
+        create_jadwal = self.client.post(reverse('pemeliharaan_create'), {
+            'aset': self.aset.pk,
+            'jenis': 'KOREKTIF',
+            'laporan_kerusakan': laporan.pk,
+            'tanggal_jadwal': today.isoformat(),
+            'teknisi': self.teknisi.pk,
+            'deskripsi_kegiatan': 'Ganti modul lampu proyektor',
+            'biaya': '750000',
+        })
+        self.assertRedirects(create_jadwal, reverse('pemeliharaan_list'))
+        jadwal = JadwalPemeliharaan.objects.get(laporan_kerusakan=laporan)
+        self.assertTrue(jadwal.kode_jadwal.startswith('MNT-'))
+
+        # 3. Mulai pemeliharaan -> aset status PEMELIHARAAN & kondisi PERBAIKAN
+        self.client.post(reverse('pemeliharaan_mulai', args=[jadwal.pk]))
+        jadwal.refresh_from_db()
+        self.aset.refresh_from_db()
+        self.assertEqual(jadwal.status, 'BERLANGSUNG')
+        self.assertEqual(self.aset.status, 'PEMELIHARAAN')
+        self.assertEqual(self.aset.kondisi, 'PERBAIKAN')
+
+        # 4. Selesaikan pemeliharaan -> aset BAIK & TERSEDIA, laporan SELESAI
+        self.client.post(reverse('pemeliharaan_selesai', args=[jadwal.pk]), {
+            'tanggal_selesai': today.isoformat(),
+            'biaya': '800000',
+            'kondisi_akhir': 'BAIK',
+            'catatan_hasil': 'Modul lampu diganti dan diuji normal.',
+        })
+        jadwal.refresh_from_db()
+        self.aset.refresh_from_db()
+        laporan.refresh_from_db()
+        self.assertEqual(jadwal.status, 'SELESAI')
+        self.assertEqual(jadwal.biaya, Decimal('800000'))
+        self.assertEqual(self.aset.kondisi, 'BAIK')
+        self.assertEqual(self.aset.status, 'TERSEDIA')
+        self.assertEqual(laporan.status, 'SELESAI')
+
+    def test_preventive_schedule_due_soon_and_overdue_highlights(self):
+        today = timezone.localdate()
+        JadwalPemeliharaan.objects.create(
+            kode_jadwal='MNT-202611-901',
+            aset=self.aset,
+            jenis='PREVENTIF',
+            tanggal_jadwal=today - timedelta(days=2),
+            deskripsi_kegiatan='Kalibrasi rutin',
+            status='TERJADWAL',
+        )
+        JadwalPemeliharaan.objects.create(
+            kode_jadwal='MNT-202611-902',
+            aset=self.aset,
+            jenis='KALIBRASI',
+            tanggal_jadwal=today + timedelta(days=3),
+            deskripsi_kegiatan='Pembersihan filter',
+            status='TERJADWAL',
+        )
+        self.client.force_login(self.admin)
+        resp = self.client.get(reverse('pemeliharaan_list'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Lewat 2 hari')
+        self.assertContains(resp, '3 hari lagi')

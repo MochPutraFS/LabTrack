@@ -1,7 +1,11 @@
 from django import forms
+from django.contrib.auth import get_user_model
+from django.db.models import Q
 from django.utils import timezone
 
-from .models import Aset, KategoriAset, LokasiLab, Peminjaman
+from .models import Aset, JadwalPemeliharaan, KategoriAset, LaporanKerusakan, LokasiLab, Peminjaman
+
+User = get_user_model()
 
 INPUT_CLASS = (
     'block w-full min-h-[42px] rounded-md border border-stone-300 bg-white px-3.5 py-2 '
@@ -214,4 +218,114 @@ class PengembalianForm(StyledFormMixin, forms.ModelForm):
         self.fields['kondisi_saat_kembali'].required = True
         self.fields['kondisi_saat_kembali'].choices = Peminjaman.KONDISI_KEMBALI_CHOICES
         self.initial.setdefault('kondisi_saat_kembali', 'BAIK')
+        self._apply_widget_styles()
+
+
+class LaporanKerusakanForm(StyledFormMixin, forms.ModelForm):
+    class Meta:
+        model = LaporanKerusakan
+        fields = ['aset', 'judul_kerusakan', 'tingkat_keparahan', 'deskripsi', 'foto_bukti']
+        labels = {
+            'aset': 'Aset Laboratorium',
+            'judul_kerusakan': 'Judul Kerusakan',
+            'tingkat_keparahan': 'Tingkat Keparahan',
+            'deskripsi': 'Deskripsi Kerusakan',
+            'foto_bukti': 'Foto Bukti (Opsional)',
+        }
+        widgets = {
+            'judul_kerusakan': forms.TextInput(attrs={'placeholder': 'Mis. Layar tidak menyala / kabel putus'}),
+            'deskripsi': forms.Textarea(attrs={'placeholder': 'Jelaskan gejala kerusakan dan kondisi terakhir'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['aset'].queryset = Aset.objects.select_related('lokasi').order_by('kode_aset')
+        self._apply_widget_styles()
+
+
+class PenangananKerusakanForm(StyledFormMixin, forms.ModelForm):
+    class Meta:
+        model = LaporanKerusakan
+        fields = ['status', 'catatan_penanganan']
+        labels = {
+            'status': 'Status Penanganan',
+            'catatan_penanganan': 'Catatan Penanganan',
+        }
+        widgets = {
+            'catatan_penanganan': forms.Textarea(attrs={'placeholder': 'Hasil pemeriksaan atau tindak lanjut'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._apply_widget_styles()
+
+
+class JadwalPemeliharaanForm(StyledFormMixin, forms.ModelForm):
+    class Meta:
+        model = JadwalPemeliharaan
+        fields = ['aset', 'jenis', 'laporan_kerusakan', 'tanggal_jadwal', 'teknisi', 'deskripsi_kegiatan', 'biaya']
+        labels = {
+            'aset': 'Aset Laboratorium',
+            'jenis': 'Jenis Pemeliharaan',
+            'laporan_kerusakan': 'Laporan Kerusakan Terkait (Opsional)',
+            'tanggal_jadwal': 'Tanggal Jadwal',
+            'teknisi': 'Teknisi Penanggung Jawab',
+            'deskripsi_kegiatan': 'Deskripsi Kegiatan',
+            'biaya': 'Estimasi Biaya (Rp)',
+        }
+        widgets = {
+            'tanggal_jadwal': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'deskripsi_kegiatan': forms.Textarea(attrs={'placeholder': 'Rencana tindakan pemeliharaan atau kalibrasi'}),
+            'biaya': forms.NumberInput(attrs={'min': 0, 'step': '1000'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['aset'].queryset = Aset.objects.select_related('lokasi').order_by('kode_aset')
+        self.fields['laporan_kerusakan'].required = False
+        self.fields['laporan_kerusakan'].queryset = LaporanKerusakan.objects.select_related('aset').order_by('-tanggal_lapor')
+        self.fields['teknisi'].required = False
+        self.fields['teknisi'].queryset = User.objects.filter(
+            Q(profile__role__in=['TEKNISI', 'ADMIN']) | Q(is_superuser=True)
+        ).distinct().order_by('username')
+        self.fields['tanggal_jadwal'].input_formats = ['%Y-%m-%d']
+        if not self.initial.get('tanggal_jadwal'):
+            self.initial['tanggal_jadwal'] = timezone.localdate()
+        self._apply_widget_styles()
+
+
+class SelesaiPemeliharaanForm(StyledFormMixin, forms.Form):
+    KONDISI_AKHIR_CHOICES = [
+        ('BAIK', 'Baik'),
+        ('RUSAK_RINGAN', 'Rusak Ringan'),
+        ('RUSAK_BERAT', 'Rusak Berat'),
+    ]
+
+    tanggal_selesai = forms.DateField(
+        label='Tanggal Selesai',
+        input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+    )
+    biaya = forms.DecimalField(
+        label='Realisasi Biaya (Rp)',
+        min_value=0,
+        max_digits=12,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={'min': 0, 'step': '1000'}),
+    )
+    kondisi_akhir = forms.ChoiceField(
+        label='Kondisi Akhir Aset',
+        choices=KONDISI_AKHIR_CHOICES,
+        initial='BAIK',
+    )
+    catatan_hasil = forms.CharField(
+        label='Catatan Hasil Pemeliharaan',
+        required=False,
+        widget=forms.Textarea(attrs={'placeholder': 'Ringkasan pekerjaan dan hasil uji fungsi'}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.initial.get('tanggal_selesai'):
+            self.initial['tanggal_selesai'] = timezone.localdate()
         self._apply_widget_styles()

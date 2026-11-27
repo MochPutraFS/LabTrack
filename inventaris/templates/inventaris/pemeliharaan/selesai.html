@@ -1,0 +1,40 @@
+{% extends "inventaris/base.html" %}
+
+{% block title %}Selesaikan Pemeliharaan — LabTrack{% endblock %}
+{% block page_title %}Selesaikan Pemeliharaan{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-lg rounded-lg border border-line bg-white p-6 sm:p-7">
+  <div class="border-b border-line pb-4">
+    <p class="font-mono text-xs font-semibold uppercase tracking-wider text-muted">{{ jadwal.kode_jadwal }}</p>
+    <h2 class="mt-1 text-lg font-semibold text-ink">{{ jadwal.aset.kode_aset }} &mdash; {{ jadwal.aset.nama_aset }}</h2>
+    <p class="mt-1 text-sm text-muted">{{ jadwal.get_jenis_display }} &middot; {{ jadwal.deskripsi_kegiatan }}</p>
+  </div>
+
+  <form method="post" class="mt-5 space-y-4">
+    {% csrf_token %}
+
+    {% for field in form %}
+    <div>
+      <label for="{{ field.id_for_label }}" class="mb-1.5 block text-sm font-medium text-ink">
+        {{ field.label }}
+        {% if field.field.required %}<span class="text-red-700" aria-hidden="true">*</span>{% endif %}
+      </label>
+      {{ field }}
+      {% if field.errors %}
+      <p class="mt-1.5 text-xs font-medium text-red-700">{{ field.errors.0 }}</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    <div class="flex items-center gap-3 border-t border-line pt-4">
+      <button type="submit" class="cursor-pointer rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-stone-800">
+        Konfirmasi Selesai
+      </button>
+      <a href="{% url 'pemeliharaan_list' %}" class="rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-ink hover:bg-canvas">
+        Batal
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}

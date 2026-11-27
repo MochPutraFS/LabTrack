@@ -1,0 +1,104 @@
+{% extends "inventaris/base.html" %}
+{% load inventaris_tags %}
+
+{% block title %}Laporan Kerusakan — LabTrack{% endblock %}
+{% block page_title %}Laporan Kerusakan{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+  <!-- Header Aksi & Filter -->
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <form method="get" class="flex flex-wrap items-center gap-2">
+      <select name="status" aria-label="Filter status" class="min-h-[38px] rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs text-ink focus:border-ink focus:outline-none">
+        <option value="">Semua Status</option>
+        {% for val, label in status_choices %}
+        <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select name="keparahan" aria-label="Filter tingkat keparahan" class="min-h-[38px] rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs text-ink focus:border-ink focus:outline-none">
+        <option value="">Semua Keparahan</option>
+        {% for val, label in keparahan_choices %}
+        <option value="{{ val }}" {% if keparahan_filter == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="cursor-pointer rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-ink hover:bg-canvas">
+        Filter
+      </button>
+      {% if status_filter or keparahan_filter %}
+      <a href="{% url 'kerusakan_list' %}" class="text-xs text-muted hover:text-ink">Reset</a>
+      {% endif %}
+    </form>
+
+    <a href="{% url 'kerusakan_lapor' %}" class="inline-flex items-center gap-1.5 rounded-md bg-ink px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-stone-800">
+      <i data-lucide="plus" class="h-4 w-4" aria-hidden="true"></i>
+      <span>Lapor Kerusakan</span>
+    </a>
+  </div>
+
+  <!-- Tabel Laporan Kerusakan -->
+  <div class="overflow-hidden rounded-lg border border-line bg-white">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead class="border-b border-line bg-canvas text-xs uppercase tracking-wider text-muted">
+          <tr>
+            <th scope="col" class="px-4 py-3 font-medium">Kode</th>
+            <th scope="col" class="px-4 py-3 font-medium">Aset &amp; Judul</th>
+            <th scope="col" class="px-4 py-3 font-medium">Pelapor</th>
+            <th scope="col" class="px-4 py-3 font-medium">Keparahan</th>
+            <th scope="col" class="px-4 py-3 font-medium">Status</th>
+            <th scope="col" class="px-4 py-3 font-medium text-right">Aksi</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line">
+          {% for k in page_obj %}
+          <tr class="hover:bg-canvas/60">
+            <td class="px-4 py-3 font-mono text-xs font-semibold text-ink whitespace-nowrap">
+              <a href="{% url 'kerusakan_detail' k.pk %}" class="hover:underline">{{ k.kode_laporan }}</a>
+            </td>
+            <td class="px-4 py-3">
+              <a href="{% url 'kerusakan_detail' k.pk %}" class="font-medium text-ink hover:underline">{{ k.judul_kerusakan }}</a>
+              <span class="block text-xs text-muted">{{ k.aset.kode_aset }} &mdash; {{ k.aset.nama_aset }}</span>
+            </td>
+            <td class="px-4 py-3 text-muted whitespace-nowrap">
+              {{ k.pelapor.get_full_name|default:k.pelapor.username }}
+              <span class="block font-mono text-[11px]">{{ k.tanggal_lapor|date:"d M Y" }}</span>
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              <span class="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium {% if k.tingkat_keparahan == 'BERAT' %}border border-red-200 bg-red-50 text-red-800{% elif k.tingkat_keparahan == 'SEDANG' %}border border-amber-200 bg-amber-50 text-amber-800{% else %}border border-stone-300 bg-stone-100 text-stone-700{% endif %}">
+                {{ k.get_tingkat_keparahan_display }}
+              </span>
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              <span class="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium {{ k.status|badge_status }}">
+                {{ k.get_status_display }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-right whitespace-nowrap">
+              <a href="{% url 'kerusakan_detail' k.pk %}" class="rounded border border-stone-300 bg-white px-2.5 py-1 text-xs font-medium text-ink hover:bg-canvas">Detail</a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="px-4 py-10 text-center text-sm text-muted">Belum ada laporan kerusakan.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="flex items-center justify-between border-t border-line px-4 py-3 text-xs text-muted">
+      <span>Halaman <span class="font-mono text-ink">{{ page_obj.number }}</span> dari <span class="font-mono text-ink">{{ page_obj.paginator.num_pages }}</span></span>
+      <div class="flex items-center gap-2">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}{% if query_string %}&{{ query_string }}{% endif %}" class="rounded border border-stone-300 bg-white px-3 py-1.5 font-medium text-ink hover:bg-canvas">Sebelumnya</a>
+        {% endif %}
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if query_string %}&{{ query_string }}{% endif %}" class="rounded border border-stone-300 bg-white px-3 py-1.5 font-medium text-ink hover:bg-canvas">Berikutnya</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

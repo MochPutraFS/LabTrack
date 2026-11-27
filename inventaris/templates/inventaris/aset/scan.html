@@ -43,7 +43,7 @@
     <a href="{% url 'peminjaman_ajukan' %}?aset={{ aset.pk }}" class="flex w-full min-h-[44px] items-center justify-center rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-stone-800">
       Ajukan Pinjam
     </a>
-    <a href="{% url 'kerusakan_list' %}?aset={{ aset.pk }}" class="flex w-full min-h-[44px] items-center justify-center rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-ink hover:bg-canvas">
+    <a href="{% url 'kerusakan_lapor' %}?aset={{ aset.pk }}" class="flex w-full min-h-[44px] items-center justify-center rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-ink hover:bg-canvas">
       Laporkan Kerusakan
     </a>
     <a href="{% url 'aset_detail' aset.pk %}" class="flex w-full min-h-[44px] items-center justify-center rounded-md text-xs font-medium text-muted hover:text-ink">

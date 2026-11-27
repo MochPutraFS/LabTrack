@@ -36,9 +36,19 @@ urlpatterns = [
     path('peminjaman/<int:pk>/tolak/', views.peminjaman_tolak, name='peminjaman_tolak'),
     path('peminjaman/<int:pk>/kembalikan/', views.peminjaman_kembalikan, name='peminjaman_kembalikan'),
 
-    # Placeholder routes untuk modul S06-S07
-    path('kerusakan/', views.module_placeholder, {'title': 'Laporan Kerusakan'}, name='kerusakan_list'),
-    path('pemeliharaan/', views.module_placeholder, {'title': 'Jadwal Pemeliharaan'}, name='pemeliharaan_list'),
+    # Pencatatan Kerusakan Aset
+    path('kerusakan/', views.kerusakan_list, name='kerusakan_list'),
+    path('kerusakan/lapor/', views.kerusakan_lapor, name='kerusakan_lapor'),
+    path('kerusakan/<int:pk>/', views.kerusakan_detail, name='kerusakan_detail'),
+
+    # Jadwal Pemeliharaan Aset
+    path('pemeliharaan/', views.pemeliharaan_list, name='pemeliharaan_list'),
+    path('pemeliharaan/tambah/', views.pemeliharaan_create, name='pemeliharaan_create'),
+    path('pemeliharaan/<int:pk>/edit/', views.pemeliharaan_edit, name='pemeliharaan_edit'),
+    path('pemeliharaan/<int:pk>/mulai/', views.pemeliharaan_mulai, name='pemeliharaan_mulai'),
+    path('pemeliharaan/<int:pk>/selesai/', views.pemeliharaan_selesai, name='pemeliharaan_selesai'),
+
+    # Placeholder routes untuk modul S07
     path(
         'laporan/kondisi-penyusutan/',
         views.module_placeholder,

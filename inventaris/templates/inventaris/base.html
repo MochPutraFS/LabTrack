@@ -79,13 +79,13 @@
             </a>
           </li>
           <li>
-            <a href="{% url 'kerusakan_list' %}" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors {% if active == 'kerusakan_list' %}bg-canvas font-semibold text-ink border-l-2 border-ink{% else %}text-muted hover:bg-canvas/70 hover:text-ink{% endif %}">
+            <a href="{% url 'kerusakan_list' %}" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors {% if 'kerusakan_' in active %}bg-canvas font-semibold text-ink border-l-2 border-ink{% else %}text-muted hover:bg-canvas/70 hover:text-ink{% endif %}">
               <i data-lucide="alert-triangle" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
               <span>Laporan Kerusakan</span>
             </a>
           </li>
           <li>
-            <a href="{% url 'pemeliharaan_list' %}" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors {% if active == 'pemeliharaan_list' %}bg-canvas font-semibold text-ink border-l-2 border-ink{% else %}text-muted hover:bg-canvas/70 hover:text-ink{% endif %}">
+            <a href="{% url 'pemeliharaan_list' %}" class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors {% if 'pemeliharaan_' in active %}bg-canvas font-semibold text-ink border-l-2 border-ink{% else %}text-muted hover:bg-canvas/70 hover:text-ink{% endif %}">
               <i data-lucide="wrench" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
               <span>Jadwal Pemeliharaan</span>
             </a>

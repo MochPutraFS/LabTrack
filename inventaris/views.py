@@ -12,7 +12,17 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from .decorators import role_required
-from .forms import AsetForm, KategoriAsetForm, LokasiLabForm, PeminjamanForm, PengembalianForm
+from .forms import (
+    AsetForm,
+    JadwalPemeliharaanForm,
+    KategoriAsetForm,
+    LaporanKerusakanForm,
+    LokasiLabForm,
+    PeminjamanForm,
+    PenangananKerusakanForm,
+    PengembalianForm,
+    SelesaiPemeliharaanForm,
+)
 from .models import Aset, JadwalPemeliharaan, KategoriAset, LaporanKerusakan, LokasiLab, Peminjaman
 from .services import generate_aset_qr
 
@@ -549,7 +559,269 @@ def peminjaman_kembalikan(request, pk):
 
 
 # ---------------------------------------------------------------------------
-# Placeholder routes untuk modul S06-S07
+# Pencatatan Kerusakan Aset
+# ---------------------------------------------------------------------------
+
+def _generate_kode_laporan():
+    today = timezone.localdate()
+    prefix = f'RSK-{today:%Y%m}-'
+    last = LaporanKerusakan.objects.filter(kode_laporan__startswith=prefix).order_by('-kode_laporan').first()
+    seq = int(last.kode_laporan.split('-')[-1]) + 1 if last else 1
+    return f'{prefix}{seq:03d}'
+
+
+def _generate_kode_jadwal():
+    today = timezone.localdate()
+    prefix = f'MNT-{today:%Y%m}-'
+    last = JadwalPemeliharaan.objects.filter(kode_jadwal__startswith=prefix).order_by('-kode_jadwal').first()
+    seq = int(last.kode_jadwal.split('-')[-1]) + 1 if last else 1
+    return f'{prefix}{seq:03d}'
+
+
+@login_required
+def kerusakan_list(request):
+    qs = LaporanKerusakan.objects.select_related('aset', 'pelapor', 'ditangani_oleh').order_by('-tanggal_lapor')
+    status_filter = request.GET.get('status', '').strip()
+    keparahan_filter = request.GET.get('keparahan', '').strip()
+
+    if status_filter in dict(LaporanKerusakan.STATUS_CHOICES):
+        qs = qs.filter(status=status_filter)
+    if keparahan_filter in dict(LaporanKerusakan.KEPARAHAN_CHOICES):
+        qs = qs.filter(tingkat_keparahan=keparahan_filter)
+
+    paginator = Paginator(qs, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    query_params = request.GET.copy()
+    query_params.pop('page', None)
+
+    return render(request, 'inventaris/kerusakan/list.html', {
+        'page_obj': page_obj,
+        'status_filter': status_filter,
+        'keparahan_filter': keparahan_filter,
+        'status_choices': LaporanKerusakan.STATUS_CHOICES,
+        'keparahan_choices': LaporanKerusakan.KEPARAHAN_CHOICES,
+        'query_string': query_params.urlencode(),
+    })
+
+
+@login_required
+def kerusakan_lapor(request):
+    initial = {}
+    aset_id = request.GET.get('aset')
+    if aset_id and aset_id.isdigit():
+        if Aset.objects.filter(pk=int(aset_id)).exists():
+            initial['aset'] = int(aset_id)
+
+    form = LaporanKerusakanForm(request.POST or None, request.FILES or None, initial=initial)
+    if request.method == 'POST' and form.is_valid():
+        with transaction.atomic():
+            laporan = form.save(commit=False)
+            laporan.pelapor = request.user
+            laporan.status = 'DILAPORKAN'
+            laporan.kode_laporan = _generate_kode_laporan()
+            laporan.save()
+
+            aset = Aset.objects.select_for_update().get(pk=laporan.aset_id)
+            if laporan.tingkat_keparahan == 'BERAT':
+                aset.kondisi = 'RUSAK_BERAT'
+                aset.save(update_fields=['kondisi', 'updated_at'])
+            elif aset.kondisi == 'BAIK':
+                aset.kondisi = 'RUSAK_RINGAN'
+                aset.save(update_fields=['kondisi', 'updated_at'])
+
+        messages.success(request, f'Laporan kerusakan {laporan.kode_laporan} berhasil dicatat.')
+        return redirect('kerusakan_detail', pk=laporan.pk)
+
+    return render(request, 'inventaris/kerusakan/lapor.html', {'form': form})
+
+
+@login_required
+def kerusakan_detail(request, pk):
+    laporan = get_object_or_404(
+        LaporanKerusakan.objects.select_related('aset', 'aset__lokasi', 'pelapor', 'ditangani_oleh'),
+        pk=pk,
+    )
+    profile = getattr(request.user, 'profile', None)
+    can_manage = request.user.is_superuser or (profile and profile.role in ('ADMIN', 'TEKNISI'))
+
+    form = PenangananKerusakanForm(request.POST or None, instance=laporan)
+    if request.method == 'POST':
+        if not can_manage:
+            messages.error(request, 'Anda tidak memiliki hak akses untuk memperbarui penanganan kerusakan.')
+            return redirect('kerusakan_detail', pk=laporan.pk)
+        if form.is_valid():
+            updated = form.save(commit=False)
+            updated.ditangani_oleh = request.user
+            updated.save()
+            messages.success(request, f'Status penanganan {laporan.kode_laporan} berhasil diperbarui.')
+            return redirect('kerusakan_detail', pk=laporan.pk)
+
+    jadwal_terkait = laporan.pemeliharaans.select_related('teknisi').order_by('-tanggal_jadwal')
+    return render(request, 'inventaris/kerusakan/detail.html', {
+        'laporan': laporan,
+        'form': form,
+        'can_manage': can_manage,
+        'jadwal_terkait': jadwal_terkait,
+    })
+
+
+# ---------------------------------------------------------------------------
+# Jadwal Pemeliharaan Aset
+# ---------------------------------------------------------------------------
+
+@login_required
+def pemeliharaan_list(request):
+    today = timezone.localdate()
+    qs = JadwalPemeliharaan.objects.select_related('aset', 'teknisi', 'laporan_kerusakan').order_by('tanggal_jadwal')
+
+    status_filter = request.GET.get('status', '').strip()
+    jenis_filter = request.GET.get('jenis', '').strip()
+
+    if status_filter in dict(JadwalPemeliharaan.STATUS_CHOICES):
+        qs = qs.filter(status=status_filter)
+    if jenis_filter in dict(JadwalPemeliharaan.JENIS_CHOICES):
+        qs = qs.filter(jenis=jenis_filter)
+
+    paginator = Paginator(qs, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    rows = []
+    for j in page_obj:
+        selisih = (j.tanggal_jadwal - today).days
+        is_active = j.status in ('TERJADWAL', 'BERLANGSUNG')
+        rows.append({
+            'obj': j,
+            'selisih_hari': selisih,
+            'abs_hari': abs(selisih),
+            'is_overdue': is_active and selisih < 0,
+            'is_due_soon': is_active and 0 <= selisih <= 7,
+        })
+
+    query_params = request.GET.copy()
+    query_params.pop('page', None)
+
+    return render(request, 'inventaris/pemeliharaan/list.html', {
+        'page_obj': page_obj,
+        'rows': rows,
+        'status_filter': status_filter,
+        'jenis_filter': jenis_filter,
+        'status_choices': JadwalPemeliharaan.STATUS_CHOICES,
+        'jenis_choices': JadwalPemeliharaan.JENIS_CHOICES,
+        'query_string': query_params.urlencode(),
+    })
+
+
+@role_required('ADMIN', 'TEKNISI')
+def pemeliharaan_create(request):
+    initial = {}
+    aset_id = request.GET.get('aset')
+    laporan_id = request.GET.get('laporan')
+    jenis = request.GET.get('jenis')
+    if aset_id and aset_id.isdigit() and Aset.objects.filter(pk=int(aset_id)).exists():
+        initial['aset'] = int(aset_id)
+    if laporan_id and laporan_id.isdigit() and LaporanKerusakan.objects.filter(pk=int(laporan_id)).exists():
+        initial['laporan_kerusakan'] = int(laporan_id)
+    if jenis in dict(JadwalPemeliharaan.JENIS_CHOICES):
+        initial['jenis'] = jenis
+
+    form = JadwalPemeliharaanForm(request.POST or None, initial=initial)
+    if request.method == 'POST' and form.is_valid():
+        jadwal = form.save(commit=False)
+        jadwal.kode_jadwal = _generate_kode_jadwal()
+        jadwal.status = 'TERJADWAL'
+        jadwal.save()
+        messages.success(request, f'Jadwal pemeliharaan {jadwal.kode_jadwal} berhasil dibuat.')
+        return redirect('pemeliharaan_list')
+
+    return render(request, 'inventaris/pemeliharaan/form.html', {
+        'form': form,
+        'page_title': 'Tambah Jadwal Pemeliharaan',
+    })
+
+
+@role_required('ADMIN', 'TEKNISI')
+def pemeliharaan_edit(request, pk):
+    jadwal = get_object_or_404(JadwalPemeliharaan, pk=pk)
+    form = JadwalPemeliharaanForm(request.POST or None, instance=jadwal)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, f'Jadwal {jadwal.kode_jadwal} berhasil diperbarui.')
+        return redirect('pemeliharaan_list')
+
+    return render(request, 'inventaris/pemeliharaan/form.html', {
+        'form': form,
+        'jadwal': jadwal,
+        'page_title': f'Edit Jadwal: {jadwal.kode_jadwal}',
+    })
+
+
+@require_POST
+@role_required('ADMIN', 'TEKNISI')
+def pemeliharaan_mulai(request, pk):
+    with transaction.atomic():
+        jadwal = get_object_or_404(JadwalPemeliharaan.objects.select_for_update(), pk=pk)
+        if jadwal.status != 'TERJADWAL':
+            messages.error(request, f'Jadwal {jadwal.kode_jadwal} tidak berstatus Terjadwal.')
+            return redirect('pemeliharaan_list')
+
+        jadwal.status = 'BERLANGSUNG'
+        jadwal.save(update_fields=['status', 'updated_at'])
+
+        aset = Aset.objects.select_for_update().get(pk=jadwal.aset_id)
+        aset.status = 'PEMELIHARAAN'
+        aset.kondisi = 'PERBAIKAN'
+        aset.save(update_fields=['status', 'kondisi', 'updated_at'])
+
+    messages.success(request, f'Pemeliharaan {jadwal.kode_jadwal} dimulai. Status aset kini Pemeliharaan.')
+    return redirect('pemeliharaan_list')
+
+
+@role_required('ADMIN', 'TEKNISI')
+def pemeliharaan_selesai(request, pk):
+    jadwal = get_object_or_404(JadwalPemeliharaan.objects.select_related('aset', 'laporan_kerusakan'), pk=pk)
+    if jadwal.status not in ('TERJADWAL', 'BERLANGSUNG'):
+        messages.error(request, f'Jadwal {jadwal.kode_jadwal} sudah selesai atau dibatalkan.')
+        return redirect('pemeliharaan_list')
+
+    form = SelesaiPemeliharaanForm(
+        request.POST or None,
+        initial={'biaya': jadwal.biaya, 'tanggal_selesai': timezone.localdate()},
+    )
+    if request.method == 'POST' and form.is_valid():
+        with transaction.atomic():
+            locked = JadwalPemeliharaan.objects.select_for_update().get(pk=pk)
+            aset = Aset.objects.select_for_update().get(pk=locked.aset_id)
+
+            locked.tanggal_selesai = form.cleaned_data['tanggal_selesai']
+            locked.biaya = form.cleaned_data['biaya']
+            locked.catatan_hasil = form.cleaned_data['catatan_hasil']
+            locked.status = 'SELESAI'
+            locked.save()
+
+            aset.kondisi = form.cleaned_data['kondisi_akhir']
+            if aset.status != 'DIHAPUSKAN':
+                aset.status = 'TERSEDIA'
+            aset.save(update_fields=['kondisi', 'status', 'updated_at'])
+
+            if locked.laporan_kerusakan_id:
+                laporan = LaporanKerusakan.objects.select_for_update().get(pk=locked.laporan_kerusakan_id)
+                laporan.status = 'SELESAI'
+                if not laporan.ditangani_oleh_id:
+                    laporan.ditangani_oleh = request.user
+                laporan.save(update_fields=['status', 'ditangani_oleh', 'updated_at'])
+
+        messages.success(request, f'Pemeliharaan {jadwal.kode_jadwal} selesai. Kondisi & status aset diperbarui.')
+        return redirect('pemeliharaan_list')
+
+    return render(request, 'inventaris/pemeliharaan/selesai.html', {
+        'jadwal': jadwal,
+        'form': form,
+    })
+
+
+# ---------------------------------------------------------------------------
+# Placeholder routes untuk modul S07
 # ---------------------------------------------------------------------------
 
 @login_required

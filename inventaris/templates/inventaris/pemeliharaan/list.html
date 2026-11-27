@@ -1,0 +1,126 @@
+{% extends "inventaris/base.html" %}
+{% load inventaris_tags %}
+
+{% block title %}Jadwal Pemeliharaan — LabTrack{% endblock %}
+{% block page_title %}Jadwal Pemeliharaan{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+  <!-- Header Aksi & Filter -->
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <form method="get" class="flex flex-wrap items-center gap-2">
+      <select name="status" aria-label="Filter status" class="min-h-[38px] rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs text-ink focus:border-ink focus:outline-none">
+        <option value="">Semua Status</option>
+        {% for val, label in status_choices %}
+        <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select name="jenis" aria-label="Filter jenis" class="min-h-[38px] rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs text-ink focus:border-ink focus:outline-none">
+        <option value="">Semua Jenis</option>
+        {% for val, label in jenis_choices %}
+        <option value="{{ val }}" {% if jenis_filter == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="cursor-pointer rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-ink hover:bg-canvas">
+        Filter
+      </button>
+      {% if status_filter or jenis_filter %}
+      <a href="{% url 'pemeliharaan_list' %}" class="text-xs text-muted hover:text-ink">Reset</a>
+      {% endif %}
+    </form>
+
+    {% if user_role == 'ADMIN' or user_role == 'TEKNISI' %}
+    <a href="{% url 'pemeliharaan_create' %}" class="inline-flex items-center gap-1.5 rounded-md bg-ink px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-stone-800">
+      <i data-lucide="plus" class="h-4 w-4" aria-hidden="true"></i>
+      <span>Tambah Jadwal</span>
+    </a>
+    {% endif %}
+  </div>
+
+  <!-- Tabel Jadwal -->
+  <div class="overflow-hidden rounded-lg border border-line bg-white">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead class="border-b border-line bg-canvas text-xs uppercase tracking-wider text-muted">
+          <tr>
+            <th scope="col" class="px-4 py-3 font-medium">Kode &amp; Aset</th>
+            <th scope="col" class="px-4 py-3 font-medium">Jenis</th>
+            <th scope="col" class="px-4 py-3 font-medium">Tanggal Jadwal</th>
+            <th scope="col" class="px-4 py-3 font-medium">Teknisi</th>
+            <th scope="col" class="px-4 py-3 font-medium text-right">Biaya</th>
+            <th scope="col" class="px-4 py-3 font-medium">Status</th>
+            {% if user_role == 'ADMIN' or user_role == 'TEKNISI' %}
+            <th scope="col" class="px-4 py-3 font-medium text-right">Aksi</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line">
+          {% for item in rows %}
+          {% with j=item.obj %}
+          <tr class="{% if item.is_overdue %}bg-red-50/50 hover:bg-red-50{% elif item.is_due_soon %}bg-amber-50/50 hover:bg-amber-50{% else %}hover:bg-canvas/60{% endif %}">
+            <td class="px-4 py-3">
+              <span class="font-mono text-xs font-semibold text-ink">{{ j.kode_jadwal }}</span>
+              <a href="{% url 'aset_detail' j.aset.pk %}" class="block font-medium text-ink hover:underline">{{ j.aset.nama_aset }}</a>
+              <span class="block text-xs text-muted">{{ j.deskripsi_kegiatan|truncatewords:10 }}</span>
+            </td>
+            <td class="px-4 py-3 text-muted whitespace-nowrap">{{ j.get_jenis_display }}</td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              <span class="font-mono text-xs text-ink">{{ j.tanggal_jadwal|date:"d M Y" }}</span>
+              {% if item.is_overdue %}
+              <span class="mt-0.5 block font-mono text-[11px] font-medium text-red-700">Lewat {{ item.abs_hari }} hari</span>
+              {% elif item.is_due_soon %}
+              <span class="mt-0.5 block font-mono text-[11px] font-medium text-amber-800">{% if item.selisih_hari == 0 %}Hari ini{% else %}{{ item.selisih_hari }} hari lagi{% endif %}</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 text-muted whitespace-nowrap">{{ j.teknisi.username|default:"-" }}</td>
+            <td class="px-4 py-3 text-right font-mono text-xs tabular-nums text-ink whitespace-nowrap">{{ j.biaya|rupiah }}</td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              <span class="inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium {{ j.status|badge_status }}">
+                {{ j.get_status_display }}
+              </span>
+            </td>
+            {% if user_role == 'ADMIN' or user_role == 'TEKNISI' %}
+            <td class="px-4 py-3 text-right whitespace-nowrap">
+              <div class="inline-flex items-center gap-1.5">
+                {% if j.status == 'TERJADWAL' %}
+                <form method="post" action="{% url 'pemeliharaan_mulai' j.pk %}">
+                  {% csrf_token %}
+                  <button type="submit" class="cursor-pointer rounded bg-ink px-2.5 py-1 text-xs font-medium text-white hover:bg-stone-800">Mulai</button>
+                </form>
+                <a href="{% url 'pemeliharaan_selesai' j.pk %}" class="rounded border border-stone-300 bg-white px-2.5 py-1 text-xs font-medium text-ink hover:bg-canvas">Selesai</a>
+                <a href="{% url 'pemeliharaan_edit' j.pk %}" class="rounded border border-stone-300 bg-white px-2.5 py-1 text-xs font-medium text-muted hover:text-ink">Edit</a>
+                {% elif j.status == 'BERLANGSUNG' %}
+                <a href="{% url 'pemeliharaan_selesai' j.pk %}" class="rounded bg-ink px-2.5 py-1 text-xs font-medium text-white hover:bg-stone-800">Selesaikan</a>
+                {% else %}
+                <span class="text-xs text-muted">-</span>
+                {% endif %}
+              </div>
+            </td>
+            {% endif %}
+          </tr>
+          {% endwith %}
+          {% empty %}
+          <tr>
+            <td colspan="7" class="px-4 py-10 text-center text-sm text-muted">Belum ada jadwal pemeliharaan.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="flex items-center justify-between border-t border-line px-4 py-3 text-xs text-muted">
+      <span>Halaman <span class="font-mono text-ink">{{ page_obj.number }}</span> dari <span class="font-mono text-ink">{{ page_obj.paginator.num_pages }}</span></span>
+      <div class="flex items-center gap-2">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}{% if query_string %}&{{ query_string }}{% endif %}" class="rounded border border-stone-300 bg-white px-3 py-1.5 font-medium text-ink hover:bg-canvas">Sebelumnya</a>
+        {% endif %}
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if query_string %}&{{ query_string }}{% endif %}" class="rounded border border-stone-300 bg-white px-3 py-1.5 font-medium text-ink hover:bg-canvas">Berikutnya</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
