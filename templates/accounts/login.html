@@ -36,7 +36,7 @@
         <label for="{{ form.password.id_for_label }}" class="block text-xs font-medium text-slate-700">
           {{ form.password.label }} <span aria-hidden="true" class="text-red-600">*</span>
         </label>
-        <button type="button" id="toggle-login-pw" aria-pressed="false" aria-label="Tampilkan kata sandi" class="text-xs font-medium text-teal-700 hover:text-teal-800">
+        <button type="button" id="toggle-login-pw" aria-pressed="false" aria-label="Tampilkan kata sandi" class="min-h-11 sm:min-h-0 px-2 -my-2 sm:my-0 inline-flex items-center text-xs font-medium text-teal-700 hover:text-teal-800">
           Tampilkan
         </button>
       </div>
@@ -46,7 +46,7 @@
       {% endif %}
     </div>
 
-    <button type="submit" class="w-full py-2.5 px-4 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+    <button type="submit" class="w-full min-h-11 py-2.5 px-4 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
       Masuk
     </button>
   </form>

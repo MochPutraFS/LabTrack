@@ -7,8 +7,9 @@ from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 User = get_user_model()
 
 INPUT_CLASS = (
-    "w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-800 "
-    "placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
+    "w-full min-h-11 sm:min-h-0 rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-800 "
+    "placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20 "
+    "disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
 )
 SELECT_CLASS = INPUT_CLASS
 CHECKBOX_CLASS = "h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-600"
@@ -22,7 +23,7 @@ class LoginForm(AuthenticationForm):
         widget=forms.TextInput(
             attrs={
                 "class": INPUT_CLASS,
-                "placeholder": "contoh: admin_lab atau email@labtrack.local",
+                "placeholder": "Username atau email",
                 "autocomplete": "username",
                 "autocorrect": "off",
                 "autocapitalize": "none",

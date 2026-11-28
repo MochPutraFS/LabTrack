@@ -17,20 +17,20 @@
 
 <search class="block mb-5">
   <form method="get" action="{% url 'accounts:user_list' %}" class="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
-    <input type="search" name="q" value="{{ q }}" placeholder="Cari nama, username, email, NIM/NIP..." aria-label="Cari pengguna" class="sm:col-span-2 rounded-lg border border-slate-300 px-3.5 py-2 text-sm">
-    <select name="role" aria-label="Filter peran" class="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+    <input type="search" name="q" value="{{ q }}" placeholder="Cari nama, username, NIM/NIP..." aria-label="Cari pengguna" class="sm:col-span-2 min-h-11 sm:min-h-0 rounded-lg border border-slate-300 px-3.5 py-2 text-sm">
+    <select name="role" aria-label="Filter peran" class="min-h-11 sm:min-h-0 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
       <option value="">Semua Peran</option>
       {% for val, label in roles %}
         <option value="{{ val }}" {% if selected_role == val %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
     <div class="flex gap-2">
-      <select name="status" aria-label="Filter status aktif" class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+      <select name="status" aria-label="Filter status aktif" class="flex-1 min-h-11 sm:min-h-0 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
         <option value="">Semua Status</option>
         <option value="active" {% if selected_status == 'active' %}selected{% endif %}>Aktif</option>
         <option value="inactive" {% if selected_status == 'inactive' %}selected{% endif %}>Nonaktif</option>
       </select>
-      <button type="submit" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-slate-700 hover:bg-slate-800">Filter</button>
+      <button type="submit" class="min-h-11 sm:min-h-0 px-4 py-2 rounded-lg text-sm font-medium text-white bg-slate-700 hover:bg-slate-800">Filter</button>
     </div>
   </form>
 </search>
@@ -55,7 +55,7 @@
             <p class="font-medium text-slate-800">{{ u.full_name|default:u.username }}</p>
             <p class="text-xs text-slate-500 font-mono-num">@{{ u.username }} &middot; {{ u.email }}</p>
           </td>
-          <td class="px-4 py-3 font-mono-num text-xs text-slate-700">{{ u.identifier_number|default:"-" }}</td>
+          <td class="px-4 py-3 font-mono-num text-xs text-slate-700 whitespace-nowrap">{{ u.identifier_number|default:"-" }}</td>
           <td class="px-4 py-3 text-slate-600">{{ u.department|default:"-" }}</td>
           <td class="px-4 py-3">{% status_badge u.role u.get_role_display %}</td>
           <td class="px-4 py-3">
@@ -66,7 +66,7 @@
             {% endif %}
           </td>
           <td class="px-4 py-3 text-right">
-            <a href="{% url 'accounts:user_edit' u.pk %}" class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium text-teal-700 bg-teal-50 hover:bg-teal-100">
+            <a href="{% url 'accounts:user_edit' u.pk %}" class="inline-flex items-center min-h-11 sm:min-h-0 px-3 py-1.5 rounded-lg text-xs font-medium text-teal-700 bg-teal-50 hover:bg-teal-100">
               Ubah
             </a>
           </td>

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load labtrack_tags %}
+
+{% block title %}Audit Log Sistem{% endblock %}
+{% block page_heading %}Administrasi / Audit Log{% endblock %}
+
+{% block content %}
+<div class="mb-5">
+  <h1 class="text-2xl font-semibold text-slate-800 tracking-tight">Audit Log Sistem</h1>
+  <p class="text-sm text-slate-500 mt-0.5">Rekam jejak immutable seluruh aksi kritis pada inventaris, sirkulasi, pemeliharaan, dan akun pengguna.</p>
+</div>
+
+<!-- Filter Bar -->
+<form method="get" class="bg-white border border-slate-200 rounded-xl p-4 mb-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+  <div>
+    <label for="audit-q" class="block text-xs font-medium text-slate-600 mb-1">Cari Pelaku / Entitas / Aksi</label>
+    <input id="audit-q" type="search" name="q" value="{{ filters.q }}" placeholder="Username, ID, atau aksi..." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+  </div>
+  <div>
+    <label for="audit-action" class="block text-xs font-medium text-slate-600 mb-1">Jenis Aksi</label>
+    <select id="audit-action" name="action" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+      <option value="">Semua Aksi</option>
+      {% for act in actions %}
+        <option value="{{ act }}" {% if filters.action == act %}selected{% endif %}>{{ act }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="audit-entity" class="block text-xs font-medium text-slate-600 mb-1">Entitas</label>
+    <select id="audit-entity" name="entity_type" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+      <option value="">Semua Entitas</option>
+      {% for et in entity_types %}
+        <option value="{{ et }}" {% if filters.entity_type == et %}selected{% endif %}>{{ et }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="flex items-center gap-2">
+    <button type="submit" class="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+      Filter
+    </button>
+    <a href="{% url 'core:audit_log_list' %}" class="px-3.5 py-2 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
+      Reset
+    </a>
+  </div>
+</form>
+
+<!-- Audit Table -->
+<section class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+  <h2 id="audit-table-caption" class="visually-hidden">Daftar catatan audit log sistem</h2>
+  {% if page_obj.object_list %}
+  <div tabindex="0" role="region" aria-labelledby="audit-table-caption" class="table-wrapper">
+    <table class="text-sm text-left">
+      <thead class="bg-slate-50 text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+        <tr>
+          <th scope="col" class="px-4 py-3">Waktu</th>
+          <th scope="col" class="px-4 py-3">Pelaku</th>
+          <th scope="col" class="px-4 py-3">Aksi</th>
+          <th scope="col" class="px-4 py-3">Entitas</th>
+          <th scope="col" class="px-4 py-3">Ringkasan Metadata</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for log in page_obj %}
+        <tr class="hover:bg-slate-50/70 align-top">
+          <td class="px-4 py-3 whitespace-nowrap font-mono-num text-xs text-slate-600">
+            {{ log.created_at|date:"d M Y H:i:s" }}
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-xs">
+            {% if log.actor %}
+              <span class="font-medium text-slate-800">{{ log.actor.full_name|default:log.actor.username }}</span>
+              <span class="block text-slate-400 font-mono-num">@{{ log.actor.username }}</span>
+            {% else %}
+              <span class="text-slate-400 font-mono-num">SYSTEM</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono-num font-medium bg-slate-100 text-slate-700 border border-slate-200">
+              {{ log.action }}
+            </span>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap font-mono-num text-xs text-slate-700">
+            {{ log.entity_type }}#{{ log.entity_id }}
+          </td>
+          <td class="px-4 py-3 text-xs text-slate-600">
+            {% if log.metadata %}
+              <div class="flex flex-wrap gap-1.5">
+                {% for k, v in log.metadata.items %}
+                  <span class="inline-block px-2 py-0.5 rounded bg-slate-50 border border-slate-200 font-mono-num text-[11px]">
+                    <span class="text-slate-400">{{ k }}:</span> {{ v }}
+                  </span>
+                {% endfor %}
+              </div>
+            {% else %}
+              <span class="text-slate-400">-</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="p-10 text-center">
+    <p class="text-sm text-slate-600">Belum ada catatan audit log yang sesuai dengan filter.</p>
+  </div>
+  {% endif %}
+</section>
+
+{% include "partials/pagination.html" %}
+{% endblock %}

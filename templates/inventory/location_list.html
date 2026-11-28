@@ -70,8 +70,8 @@
               </td>
               {% if user.is_staff_lab %}
               <td class="px-4 py-3 text-right whitespace-nowrap">
-                <a href="{% url 'inventory:location_edit' loc.pk %}" class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium text-teal-700 bg-teal-50 hover:bg-teal-100">Ubah</a>
-                <button type="button" command="show-modal" commandfor="delete-loc-{{ loc.pk }}" class="ml-1 inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100">Hapus</button>
+                <a href="{% url 'inventory:location_edit' loc.pk %}" class="inline-flex items-center min-h-11 sm:min-h-0 px-3 sm:px-2.5 py-1 rounded-md text-xs font-medium text-teal-700 bg-teal-50 hover:bg-teal-100">Ubah</a>
+                <button type="button" command="show-modal" commandfor="delete-loc-{{ loc.pk }}" class="ml-1 inline-flex items-center min-h-11 sm:min-h-0 px-3 sm:px-2.5 py-1 rounded-md text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100">Hapus</button>
 
                 <dialog id="delete-loc-{{ loc.pk }}" closedby="any" aria-labelledby="del-loc-title-{{ loc.pk }}" class="lt-dialog text-left">
                   <div class="p-6">

@@ -9,28 +9,28 @@
     <h1 class="text-2xl font-semibold text-slate-800 tracking-tight">Cetak Label QR Code</h1>
     <p class="text-sm text-slate-500 mt-1">Filter aset lalu cetak langsung atau simpan sebagai PDF (layout grid 3 kolom A4).</p>
   </div>
-  <button type="button" id="btn-print-qr" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+  <button type="button" id="btn-print-qr" class="inline-flex items-center justify-center gap-2 min-h-11 sm:min-h-0 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
     <span>Cetak / Simpan PDF</span>
   </button>
 </div>
 
 <search class="no-print block mb-6">
   <form method="get" action="{% url 'inventory:asset_qr_print' %}" class="bg-white border border-slate-200 rounded-xl p-4 flex flex-wrap items-center gap-3">
-    <select name="category" aria-label="Filter kategori" class="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+    <select name="category" aria-label="Filter kategori" class="min-h-11 sm:min-h-0 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
       <option value="">Semua Kategori</option>
       {% for cat in categories %}
         <option value="{{ cat.pk }}" {% if selected_category == cat.pk|stringformat:"s" %}selected{% endif %}>{{ cat.code }} — {{ cat.name }}</option>
       {% endfor %}
     </select>
-    <select name="location" aria-label="Filter lokasi" class="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+    <select name="location" aria-label="Filter lokasi" class="min-h-11 sm:min-h-0 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
       <option value="">Semua Lokasi</option>
       {% for loc in locations %}
         <option value="{{ loc.pk }}" {% if selected_location == loc.pk|stringformat:"s" %}selected{% endif %}>{{ loc.code }} — {{ loc.name }}</option>
       {% endfor %}
     </select>
-    <button type="submit" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-slate-700 hover:bg-slate-800">Terapkan Filter</button>
+    <button type="submit" class="min-h-11 sm:min-h-0 px-4 py-2 rounded-lg text-sm font-medium text-white bg-slate-700 hover:bg-slate-800">Terapkan Filter</button>
     {% if selected_category or selected_location %}
-      <a href="{% url 'inventory:asset_qr_print' %}" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50">Reset</a>
+      <a href="{% url 'inventory:asset_qr_print' %}" class="inline-flex items-center min-h-11 sm:min-h-0 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50">Reset</a>
     {% endif %}
     <span class="ml-auto text-xs text-slate-500 font-mono-num">{{ assets|length }} label siap cetak</span>
   </form>

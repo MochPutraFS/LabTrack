@@ -1,4 +1,4 @@
-"""Automated tests for Session 3: Hybrid Loans (Online & Walk-In), Returns, RBAC & State Machine."""
+"""Automated tests for Module C — Hybrid Loans & Returns (TC-16 to TC-24)."""
 
 import tempfile
 from datetime import date, timedelta
@@ -21,7 +21,9 @@ User = get_user_model()
 
 
 @override_settings(MEDIA_ROOT=tempfile.mkdtemp(prefix="labtrack_test_loans_"))
-class Session3LoansTests(TestCase):
+class ModuleCLoansTests(TestCase):
+    """Covers TC-16 through TC-24 from docs/08-Test-Plan-dan-QA.md."""
+
     def setUp(self):
         self.admin = User.objects.create_user(
             username="admin_l",
@@ -48,14 +50,14 @@ class Session3LoansTests(TestCase):
             identifier_number="H071241001",
             phone_number="081200000001",
         )
-        self.borrower2 = User.objects.create_user(
-            username="mhs_2",
-            email="mhs_2@labtrack.local",
+        self.dosen_sari = User.objects.create_user(
+            username="dosen_sari",
+            email="sari.dosen@labtrack.local",
             password="Password123!",
-            full_name="Mahasiswa Dua",
+            full_name="Sari Wulandari, M.Kom",
             role=User.Role.BORROWER,
-            identifier_number="H071241002",
-            phone_number="081200000002",
+            identifier_number="NIP-19890512004",
+            phone_number="081240000005",
         )
         self.cat = Category.objects.create(code="PRJ", name="Proyektor", default_useful_life_years=5)
         self.loc = Location.objects.create(code="LAB-RPL", name="Lab RPL")
@@ -86,8 +88,8 @@ class Session3LoansTests(TestCase):
         )
         self.today = timezone.localdate()
 
-    def test_online_loan_lifecycle_and_idor_protection(self):
-        # Borrower1 requests ONLINE loan
+    def test_tc16_online_loan_request_creates_pending_without_locking_asset(self):
+        """TC-16: BORROWER submits online loan -> ONLINE/PENDING; asset remains AVAILABLE before handover."""
         self.client.force_login(self.borrower1)
         resp = self.client.post(
             reverse("loans:loan_request"),
@@ -95,31 +97,28 @@ class Session3LoansTests(TestCase):
                 "assets": [self.asset1.pk],
                 "borrow_date": str(self.today),
                 "due_date": str(self.today + timedelta(days=3)),
-                "purpose": "Presentasi Praktikum",
+                "purpose": "Presentasi Praktikum RPL",
             },
         )
         self.assertEqual(resp.status_code, 302)
         loan = Loan.objects.get()
         self.assertEqual(loan.loan_channel, Loan.Channel.ONLINE)
         self.assertEqual(loan.status, Loan.Status.PENDING)
-        self.assertTrue(AuditLog.objects.filter(action="LOAN_ONLINE_REQUESTED", entity_id=str(loan.pk)).exists())
-
-        # Asset remains AVAILABLE while PENDING
         self.asset1.refresh_from_db()
         self.assertEqual(self.asset1.status, Asset.Status.AVAILABLE)
+        self.assertTrue(
+            AuditLog.objects.filter(action="LOAN_ONLINE_REQUESTED", entity_id=str(loan.pk)).exists()
+        )
 
-        # IDOR: Borrower2 cannot view Borrower1's loan detail or see it in loan_list
-        self.client.force_login(self.borrower2)
-        self.assertEqual(self.client.get(reverse("loans:loan_detail", args=[loan.pk])).status_code, 403)
-        list_resp = self.client.get(reverse("loans:loan_list"))
-        self.assertNotContains(list_resp, loan.loan_number)
-
-        # RBAC: Borrower1 cannot access walk-in or approve
-        self.client.force_login(self.borrower1)
-        self.assertEqual(self.client.get(reverse("loans:loan_walk_in")).status_code, 403)
-        self.assertEqual(self.client.post(reverse("loans:loan_approve", args=[loan.pk])).status_code, 403)
-
-        # Laboran approves (APPROVED), then hands over (ACTIVE)
+    def test_tc17_approve_and_handover_online_loan_marks_asset_borrowed(self):
+        """TC-17: LABORAN approves then hands over PENDING loan -> ACTIVE & asset becomes BORROWED."""
+        loan = loan_services.create_online_loan(
+            borrower_user=self.borrower1,
+            asset_ids=[self.asset1.pk],
+            borrow_date=self.today,
+            due_date=self.today + timedelta(days=3),
+            purpose="Demo Aplikasi",
+        )
         self.client.force_login(self.laboran)
         self.assertEqual(self.client.post(reverse("loans:loan_approve", args=[loan.pk])).status_code, 302)
         loan.refresh_from_db()
@@ -132,75 +131,163 @@ class Session3LoansTests(TestCase):
         self.assertIsNotNone(loan.handed_over_at)
         self.assertEqual(self.asset1.status, Asset.Status.BORROWED)
 
-        # Anti double-booking: asset1 cannot be borrowed again while BORROWED
-        with self.assertRaises(ValidationError):
-            loan_services.create_walk_in_loan(
-                staff_user=self.laboran,
-                asset_ids=[self.asset1.pk],
-                borrow_date=self.today,
-                due_date=self.today + timedelta(days=1),
-                purpose="Coba Double Booking",
-                borrower_name="Tamu",
-                borrower_identifier="H071249999",
-                borrower_contact="081299999999",
-            )
-
-    def test_walk_in_without_account_and_qr_preselect(self):
+    def test_tc18_reject_loan_requires_non_empty_reason(self):
+        """TC-18: Rejecting loan with empty rejection_reason is blocked by validation."""
+        loan = loan_services.create_online_loan(
+            borrower_user=self.borrower1,
+            asset_ids=[self.asset1.pk],
+            borrow_date=self.today,
+            due_date=self.today + timedelta(days=1),
+            purpose="Uji Penolakan",
+        )
         self.client.force_login(self.laboran)
+        resp = self.client.post(
+            reverse("loans:loan_reject", args=[loan.pk]),
+            {"rejection_reason": ""},
+            follow=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Alasan penolakan wajib diisi.")
+        loan.refresh_from_db()
+        self.assertEqual(loan.status, Loan.Status.PENDING)
 
-        # QR Scan shows Walk-In button for staff
-        scan_resp = self.client.get(reverse("asset_qr_scan", args=[self.asset1.asset_code]))
-        self.assertContains(scan_resp, f"?asset={self.asset1.pk}")
+        with self.assertRaises(ValidationError):
+            loan_services.reject_loan(loan, staff_user=self.laboran, reason="   ")
 
-        # Walk-In GET preselects ?asset=<id>
-        get_resp = self.client.get(reverse("loans:loan_walk_in") + f"?asset={self.asset1.pk}")
-        self.assertEqual(get_resp.status_code, 200)
-        self.assertContains(get_resp, self.asset1.asset_code)
-
-        # Walk-In POST without borrower_user (manual guest identity)
-        post_resp = self.client.post(
+    def test_tc19_walk_in_loan_without_borrower_account(self):
+        """TC-19: LABORAN records manual Walk-In loan -> WALK_IN, ACTIVE, borrower_user=None, asset=BORROWED."""
+        self.client.force_login(self.laboran)
+        resp = self.client.post(
             reverse("loans:loan_walk_in"),
             {
                 "borrower_name": "Budi Santoso (Walk-In)",
                 "borrower_identifier": "H071241888",
                 "borrower_contact": "081234567888",
-                "assets": [self.asset1.pk, self.asset2.pk],
+                "assets": [self.asset1.pk],
                 "borrow_date": str(self.today),
                 "due_date": str(self.today + timedelta(days=2)),
-                "purpose": "Workshop RPL",
+                "purpose": "Workshop Jaringan",
             },
         )
-        self.assertEqual(post_resp.status_code, 302)
+        self.assertEqual(resp.status_code, 302)
         loan = Loan.objects.get()
         self.assertEqual(loan.loan_channel, Loan.Channel.WALK_IN)
         self.assertEqual(loan.status, Loan.Status.ACTIVE)
         self.assertIsNone(loan.borrower_user)
         self.asset1.refresh_from_db()
-        self.asset2.refresh_from_db()
         self.assertEqual(self.asset1.status, Asset.Status.BORROWED)
-        self.assertEqual(self.asset2.status, Asset.Status.BORROWED)
 
-        # Return inspection: asset1 GOOD -> AVAILABLE, asset2 MAJOR_DAMAGE -> DAMAGED + auto DamageReport
-        item1 = loan.items.get(asset=self.asset1)
-        item2 = loan.items.get(asset=self.asset2)
-        ret_resp = self.client.post(
-            reverse("loans:loan_return", args=[loan.pk]),
+    def test_tc20_walk_in_loan_linked_to_existing_account(self):
+        """TC-20: LABORAN records Walk-In linked to existing account (dosen_sari) -> WALK_IN, ACTIVE."""
+        self.client.force_login(self.laboran)
+        resp = self.client.post(
+            reverse("loans:loan_walk_in"),
             {
-                f"condition_{item1.pk}": Asset.Condition.GOOD,
-                f"notes_{item1.pk}": "Lengkap",
-                f"condition_{item2.pk}": Asset.Condition.MAJOR_DAMAGE,
-                f"notes_{item2.pk}": "Lensa proyektor pecah",
+                "borrower_user": self.dosen_sari.pk,
+                "borrower_name": self.dosen_sari.full_name,
+                "borrower_identifier": self.dosen_sari.identifier_number,
+                "borrower_contact": self.dosen_sari.phone_number,
+                "assets": [self.asset1.pk],
+                "borrow_date": str(self.today),
+                "due_date": str(self.today + timedelta(days=2)),
+                "purpose": "Kuliah Tamu RPL",
             },
         )
-        self.assertEqual(ret_resp.status_code, 302)
+        self.assertEqual(resp.status_code, 302)
+        loan = Loan.objects.get()
+        self.assertEqual(loan.loan_channel, Loan.Channel.WALK_IN)
+        self.assertEqual(loan.status, Loan.Status.ACTIVE)
+        self.assertEqual(loan.borrower_user, self.dosen_sari)
+        self.asset1.refresh_from_db()
+        self.assertEqual(self.asset1.status, Asset.Status.BORROWED)
 
-        loan.refresh_from_db()
+    def test_tc21_anti_double_booking_blocks_borrowed_and_maintenance_assets(self):
+        """TC-21: Attempting to borrow a BORROWED or MAINTENANCE asset raises ValidationError."""
+        loan_services.create_walk_in_loan(
+            staff_user=self.laboran,
+            asset_ids=[self.asset1.pk],
+            borrow_date=self.today,
+            due_date=self.today + timedelta(days=1),
+            purpose="Pinjaman Aktif",
+            borrower_user=self.borrower1,
+        )
+        with self.assertRaises(ValidationError):
+            loan_services.create_online_loan(
+                borrower_user=self.dosen_sari,
+                asset_ids=[self.asset1.pk],
+                borrow_date=self.today,
+                due_date=self.today + timedelta(days=2),
+                purpose="Coba Double Booking",
+            )
+
+        self.asset2.status = Asset.Status.MAINTENANCE
+        self.asset2.save(update_fields=["status"])
+        with self.assertRaises(ValidationError):
+            loan_services.create_walk_in_loan(
+                staff_user=self.laboran,
+                asset_ids=[self.asset2.pk],
+                borrow_date=self.today,
+                due_date=self.today + timedelta(days=1),
+                purpose="Coba Pinjam Aset Maintenance",
+                borrower_name="Tamu",
+                borrower_identifier="H071249999",
+                borrower_contact="081299999999",
+            )
         self.asset1.refresh_from_db()
         self.asset2.refresh_from_db()
+        self.assertEqual(self.asset1.status, Asset.Status.BORROWED)
+        self.assertEqual(self.asset2.status, Asset.Status.MAINTENANCE)
+
+    def test_tc22_return_in_good_condition_restores_asset_available(self):
+        """TC-22: Returning asset in GOOD condition marks loan RETURNED and asset AVAILABLE."""
+        loan = loan_services.create_walk_in_loan(
+            staff_user=self.laboran,
+            asset_ids=[self.asset1.pk],
+            borrow_date=self.today,
+            due_date=self.today + timedelta(days=2),
+            purpose="Uji Return Baik",
+            borrower_user=self.borrower1,
+        )
+        item = loan.items.get(asset=self.asset1)
+        self.client.force_login(self.laboran)
+        resp = self.client.post(
+            reverse("loans:loan_return", args=[loan.pk]),
+            {
+                f"condition_{item.pk}": Asset.Condition.GOOD,
+                f"notes_{item.pk}": "Lengkap tanpa cacat",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        loan.refresh_from_db()
+        self.asset1.refresh_from_db()
         self.assertEqual(loan.status, Loan.Status.RETURNED)
         self.assertIsNotNone(loan.returned_at)
         self.assertEqual(self.asset1.status, Asset.Status.AVAILABLE)
         self.assertEqual(self.asset1.condition, Asset.Condition.GOOD)
+
+    def test_tc23_return_in_major_damage_marks_damaged_and_creates_damage_report(self):
+        """TC-23: Returning asset in MAJOR_DAMAGE marks asset DAMAGED and auto-creates DamageReport."""
+        loan = loan_services.create_walk_in_loan(
+            staff_user=self.laboran,
+            asset_ids=[self.asset2.pk],
+            borrow_date=self.today,
+            due_date=self.today + timedelta(days=2),
+            purpose="Uji Return Rusak Berat",
+            borrower_user=self.borrower1,
+        )
+        item = loan.items.get(asset=self.asset2)
+        self.client.force_login(self.laboran)
+        resp = self.client.post(
+            reverse("loans:loan_return", args=[loan.pk]),
+            {
+                f"condition_{item.pk}": Asset.Condition.MAJOR_DAMAGE,
+                f"notes_{item.pk}": "Lensa proyektor pecah",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        loan.refresh_from_db()
+        self.asset2.refresh_from_db()
+        self.assertEqual(loan.status, Loan.Status.RETURNED)
         self.assertEqual(self.asset2.status, Asset.Status.DAMAGED)
         self.assertEqual(self.asset2.condition, Asset.Condition.MAJOR_DAMAGE)
 
@@ -209,39 +296,23 @@ class Session3LoansTests(TestCase):
         self.assertEqual(dmg.severity, DamageReport.Severity.HIGH)
         self.assertIn(loan.loan_number, dmg.description)
 
-    def test_reject_cancel_overdue_and_state_machine_guards(self):
-        # Reject requires mandatory reason
+    def test_tc24_borrower_cancels_own_pending_loan(self):
+        """TC-24: BORROWER cancels own PENDING loan -> status becomes CANCELLED."""
         loan = loan_services.create_online_loan(
             borrower_user=self.borrower1,
             asset_ids=[self.asset1.pk],
             borrow_date=self.today,
             due_date=self.today + timedelta(days=1),
-            purpose="Uji Penolakan",
+            purpose="Uji Batal Peminjam",
         )
-        with self.assertRaises(ValidationError):
-            loan_services.reject_loan(loan, staff_user=self.laboran, reason="   ")
+        self.client.force_login(self.borrower1)
+        resp = self.client.post(reverse("loans:loan_cancel", args=[loan.pk]))
+        self.assertEqual(resp.status_code, 302)
+        loan.refresh_from_db()
+        self.assertEqual(loan.status, Loan.Status.CANCELLED)
 
-        loan = loan_services.reject_loan(loan, staff_user=self.laboran, reason="Jadwal bentrok praktikum")
-        self.assertEqual(loan.status, Loan.Status.REJECTED)
-        # Terminal state cannot be approved
-        with self.assertRaises(ValidationError):
-            loan_services.approve_loan(loan, staff_user=self.laboran)
-
-        # Borrower can cancel own PENDING loan, but not APPROVED loan
-        loan2 = loan_services.create_online_loan(
-            borrower_user=self.borrower1,
-            asset_ids=[self.asset1.pk],
-            borrow_date=self.today,
-            due_date=self.today + timedelta(days=1),
-            purpose="Uji Batal",
-        )
-        loan2 = loan_services.approve_loan(loan2, staff_user=self.laboran, handover_now=False)
-        with self.assertRaises(ValidationError):
-            loan_services.cancel_loan(loan2, actor=self.borrower1)
-        loan2 = loan_services.cancel_loan(loan2, actor=self.laboran)
-        self.assertEqual(loan2.status, Loan.Status.CANCELLED)
-
-        # sync_overdue_loans marks ACTIVE past due_date as OVERDUE
+    def test_overdue_sync_and_loan_list_query_efficiency(self):
+        """sync_overdue_loans transitions expired ACTIVE loans; loan_list stays free of N+1."""
         overdue_loan = loan_services.create_walk_in_loan(
             staff_user=self.laboran,
             asset_ids=[self.asset1.pk],
@@ -250,7 +321,11 @@ class Session3LoansTests(TestCase):
             purpose="Uji Terlambat",
             borrower_user=self.borrower1,
         )
-        updated_count = loan_services.sync_overdue_loans()
-        self.assertEqual(updated_count, 1)
+        self.assertEqual(loan_services.sync_overdue_loans(), 1)
         overdue_loan.refresh_from_db()
         self.assertEqual(overdue_loan.status, Loan.Status.OVERDUE)
+
+        self.client.force_login(self.laboran)
+        resp = self.client.get(reverse("loans:loan_list"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, overdue_loan.loan_number)

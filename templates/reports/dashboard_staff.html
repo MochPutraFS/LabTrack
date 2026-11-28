@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% load static labtrack_tags %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_heading %}Dashboard Operasional{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-semibold text-slate-800 tracking-tight">Dashboard Laboratorium</h1>
+    <p class="text-sm text-slate-500 mt-0.5">Ringkasan inventaris aktif, sirkulasi peminjaman, dan jadwal pemeliharaan per {{ today|date:"d M Y" }}.</p>
+  </div>
+  <div class="flex flex-wrap items-center gap-2">
+    <a href="{% url 'reports:condition_report' %}" class="inline-flex items-center min-h-11 sm:min-h-0 px-3.5 py-2 rounded-lg text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors">
+      Laporan Kondisi
+    </a>
+    <a href="{% url 'reports:depreciation_report' %}" class="inline-flex items-center min-h-11 sm:min-h-0 px-3.5 py-2 rounded-lg text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors">
+      Laporan Penyusutan
+    </a>
+    <a href="{% url 'loans:loan_walk_in' %}" class="inline-flex items-center min-h-11 sm:min-h-0 px-3.5 py-2 rounded-lg text-xs font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+      + Catat Walk-In
+    </a>
+  </div>
+</div>
+
+<!-- Row 1: 5 KPI Cards -->
+<section aria-label="Ringkasan KPI" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+  <div class="bg-white border border-slate-200 rounded-xl p-4">
+    <p class="text-xs font-medium text-slate-500">Total Aset Aktif</p>
+    <p class="mt-1.5 text-2xl font-semibold font-mono-num text-slate-800">{{ kpi.total_assets }}</p>
+    <p class="mt-1 text-[11px] text-slate-400">Tidak termasuk RETIRED</p>
+  </div>
+
+  <div class="bg-white border border-slate-200 rounded-xl p-4">
+    <p class="text-xs font-medium text-slate-500">Aset Tersedia</p>
+    <p class="mt-1.5 text-2xl font-semibold font-mono-num text-emerald-700">{{ kpi.available_assets }}</p>
+    <p class="mt-1 text-[11px] text-slate-400">Siap dipinjam</p>
+  </div>
+
+  <div class="bg-white border border-slate-200 rounded-xl p-4">
+    <div class="flex flex-wrap items-center justify-between gap-1.5">
+      <p class="text-xs font-medium text-slate-500">Sedang Dipinjam</p>
+      {% if kpi.overdue_loans_count > 0 %}
+        <span class="whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-800 border border-red-200">
+          {{ kpi.overdue_loans_count }} Terlambat
+        </span>
+      {% endif %}
+    </div>
+    <p class="mt-1.5 text-2xl font-semibold font-mono-num text-blue-700">{{ kpi.borrowed_assets }}</p>
+    <p class="mt-1 text-[11px] text-slate-400">Unit dalam sirkulasi</p>
+  </div>
+
+  <div class="bg-white border border-slate-200 rounded-xl p-4">
+    <p class="text-xs font-medium text-slate-500">Pemeliharaan / Rusak</p>
+    <p class="mt-1.5 text-2xl font-semibold font-mono-num text-amber-700">{{ kpi.maintenance_or_damaged }}</p>
+    <p class="mt-1 text-[11px] text-slate-400">Perlu perhatian teknisi</p>
+  </div>
+
+  <div class="bg-white border border-slate-200 rounded-xl p-4 sm:col-span-2 lg:col-span-1">
+    <p class="text-xs font-medium text-slate-500">Total Nilai Buku</p>
+    <p class="mt-1.5 text-lg font-semibold font-mono-num text-teal-800 truncate" title="{{ kpi.total_book_value|format_rupiah }}">
+      {{ kpi.total_book_value|format_rupiah }}
+    </p>
+    <p class="mt-1 text-[11px] text-slate-400">Estimasi Garis Lurus</p>
+  </div>
+</section>
+
+<div id="dashboard-charts-root" data-charts-url="{% url 'reports:api_dashboard_charts' %}">
+  <!-- Row 2: Status Distribution (4 cols) & Condition by Category (8 cols) -->
+  <section aria-label="Grafik Inventaris" class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+    <div class="lg:col-span-4 bg-white border border-slate-200 rounded-xl p-5 flex flex-col">
+      <div class="mb-3">
+        <h2 class="text-base font-semibold text-slate-800">Distribusi Status Aset</h2>
+        <p class="text-xs text-slate-500">Proporsi status operasional aset aktif</p>
+      </div>
+      <div class="relative h-64 min-h-[256px]">
+        <canvas id="chart-status-distribution" aria-label="Grafik distribusi status aset" role="img"></canvas>
+      </div>
+      <p data-chart-fallback class="hidden text-xs text-red-700 mt-2"></p>
+    </div>
+
+    <div class="lg:col-span-8 bg-white border border-slate-200 rounded-xl p-5 flex flex-col">
+      <div class="mb-3">
+        <h2 class="text-base font-semibold text-slate-800">Kondisi Aset per Kategori</h2>
+        <p class="text-xs text-slate-500">Sebaran kondisi Baik, Rusak Ringan, dan Rusak Berat</p>
+      </div>
+      <div class="relative h-72 sm:h-64 min-h-[256px]">
+        <canvas id="chart-condition-category" aria-label="Grafik kondisi aset per kategori" role="img"></canvas>
+      </div>
+      <p data-chart-fallback class="hidden text-xs text-red-700 mt-2"></p>
+    </div>
+  </section>
+
+  <!-- Row 3: 6-Month Activity (7 cols) & Action Queues (5 cols) -->
+  <section aria-label="Tren dan Antrean Operasional" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div class="lg:col-span-7 bg-white border border-slate-200 rounded-xl p-5 flex flex-col">
+      <div class="mb-3">
+        <h2 class="text-base font-semibold text-slate-800">Aktivitas 6 Bulan Terakhir</h2>
+        <p class="text-xs text-slate-500">Perbandingan Peminjaman Online, Walk-In, dan Log Pemeliharaan</p>
+      </div>
+      <div class="relative h-72 min-h-[272px] lg:flex-1">
+        <canvas id="chart-monthly-activity" aria-label="Grafik aktivitas 6 bulan terakhir" role="img"></canvas>
+      </div>
+      <p data-chart-fallback class="hidden text-xs text-red-700 mt-2"></p>
+    </div>
+
+    <!-- Action Queues (5 cols) -->
+    <div class="lg:col-span-5 space-y-4">
+      <!-- Pending Online Loans -->
+      <div class="bg-white border border-slate-200 rounded-xl p-4">
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <h2 class="text-sm font-semibold text-slate-800">Pengajuan Online Menunggu</h2>
+          <a href="{% url 'loans:loan_list' %}?status=PENDING&channel=ONLINE" class="text-xs font-medium text-teal-700 hover:underline">
+            Semua ({{ pending_online_count }})
+          </a>
+        </div>
+        {% if pending_online_loans %}
+        <ul class="divide-y divide-slate-100 text-xs">
+          {% for loan in pending_online_loans %}
+          <li class="py-2 flex items-center justify-between gap-2">
+            <div class="min-w-0">
+              <a href="{% url 'loans:loan_detail' loan.pk %}" class="font-mono-num font-medium text-teal-800 hover:underline">{{ loan.loan_number }}</a>
+              <p class="text-slate-600 truncate">{{ loan.borrower_name }} &middot; {{ loan.items.all|length }} unit</p>
+            </div>
+            <div class="text-right shrink-0">
+              <span class="block font-mono-num text-slate-500">{{ loan.borrow_date|date:"d M" }}</span>
+              {% status_badge loan.status "Menunggu" %}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-xs text-slate-500 py-3 text-center">Tidak ada pengajuan online yang menunggu persetujuan.</p>
+        {% endif %}
+      </div>
+
+      <!-- Overdue Loans -->
+      <div class="bg-white border border-slate-200 rounded-xl p-4">
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <h2 class="text-sm font-semibold text-slate-800">Pinjaman Terlambat (OVERDUE)</h2>
+          <a href="{% url 'loans:loan_list' %}?status=OVERDUE" class="text-xs font-medium text-teal-700 hover:underline">
+            Semua ({{ kpi.overdue_loans_count }})
+          </a>
+        </div>
+        {% if overdue_loans %}
+        <ul class="divide-y divide-slate-100 text-xs">
+          {% for loan in overdue_loans %}
+          <li class="py-2 flex items-center justify-between gap-2">
+            <div class="min-w-0">
+              <a href="{% url 'loans:loan_detail' loan.pk %}" class="font-mono-num font-medium text-red-800 hover:underline">{{ loan.loan_number }}</a>
+              <p class="text-slate-600 truncate">{{ loan.borrower_name }}</p>
+            </div>
+            <div class="text-right shrink-0">
+              <span class="block font-mono-num text-red-700">Jatuh tempo {{ loan.due_date|date:"d M Y" }}</span>
+              {% status_badge "OVERDUE" "Terlambat" %}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-xs text-slate-500 py-3 text-center">Tidak ada pinjaman terlambat saat ini.</p>
+        {% endif %}
+      </div>
+
+      <!-- Upcoming Maintenance H-7 -->
+      <div class="bg-white border border-slate-200 rounded-xl p-4">
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <h2 class="text-sm font-semibold text-slate-800">Jadwal Pemeliharaan H-7</h2>
+          <a href="{% url 'maintenance:schedule_list' %}" class="text-xs font-medium text-teal-700 hover:underline">
+            Semua ({{ upcoming_schedules_count }})
+          </a>
+        </div>
+        {% if upcoming_schedules %}
+        <ul class="divide-y divide-slate-100 text-xs">
+          {% for sched in upcoming_schedules %}
+          <li class="py-2 flex items-center justify-between gap-2">
+            <div class="min-w-0">
+              <a href="{% url 'maintenance:schedule_execute' sched.pk %}" class="font-medium text-slate-800 hover:text-teal-700 truncate block">{{ sched.title }}</a>
+              <p class="text-slate-500 truncate font-mono-num">{{ sched.asset.asset_code }} &middot; {{ sched.asset.name }}</p>
+            </div>
+            <div class="text-right shrink-0">
+              <span class="block font-mono-num {% if sched.is_overdue %}text-red-700 font-semibold{% else %}text-amber-800{% endif %}">
+                {{ sched.next_due_date|date:"d M Y" }}
+              </span>
+              {% if sched.is_overdue %}
+                {% status_badge "OVERDUE" "Terlewat" %}
+              {% else %}
+                {% status_badge "PENDING" "Segera" %}
+              {% endif %}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-xs text-slate-500 py-3 text-center">Tidak ada jadwal pemeliharaan jatuh tempo dalam 7 hari ke depan.</p>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="{% static 'js/dashboard.js' %}"></script>
+{% endblock %}

@@ -1,7 +1,7 @@
 """Business logic service layer for LabTrack inventory management."""
 
 from datetime import date
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -32,27 +32,16 @@ def ensure_asset_qr(asset: Asset, base_url: str | None = None) -> str:
 
 
 def calculate_asset_book_value(asset: Asset, as_of: date | None = None) -> dict[str, Decimal]:
-    """Compute Straight-Line depreciation summary for a single asset using Decimal."""
-    ref_date = as_of or timezone.localdate()
-    cost = asset.acquisition_cost
-    salvage = asset.salvage_value
-    life = Decimal(asset.useful_life_years)
+    """Delegate Straight-Line depreciation summary to apps.reports.services (single source of truth)."""
+    from apps.reports.services import calculate_asset_depreciation
 
-    annual = ((cost - salvage) / life).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    days_elapsed = max(0, (ref_date - asset.acquisition_date).days)
-    age_years = Decimal(days_elapsed) / Decimal("365.25")
-    capped_years = min(age_years, life)
-    accumulated = (annual * capped_years).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    max_depreciable = cost - salvage
-    if accumulated > max_depreciable:
-        accumulated = max_depreciable
-    book_value = max(salvage, cost - accumulated).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-
+    result = calculate_asset_depreciation(asset, as_of_date=as_of)
     return {
-        "annual_depreciation": annual,
-        "accumulated_depreciation": accumulated,
-        "book_value": book_value,
-        "age_years": age_years.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP),
+        "annual_depreciation": result.annual_depreciation,
+        "accumulated_depreciation": result.accumulated_depreciation,
+        "book_value": result.book_value,
+        "age_years": result.age_years,
+        "depreciation_pct": result.depreciation_pct,
     }
 
 

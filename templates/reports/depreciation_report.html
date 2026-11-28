@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% load labtrack_tags %}
+
+{% block title %}Laporan Penyusutan Aset{% endblock %}
+{% block page_heading %}Laporan / Penyusutan Aset{% endblock %}
+
+{% block content %}
+<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-semibold text-slate-800 tracking-tight">Laporan Penyusutan Aset (Garis Lurus)</h1>
+    <p class="text-sm text-slate-500 mt-0.5">Estimasi akumulasi penyusutan dan nilai buku aset aktif per tanggal acuan <span class="font-mono-num font-medium text-slate-700">{{ report.as_of_date|date:"d M Y" }}</span>.</p>
+  </div>
+  <div class="flex flex-wrap items-center gap-2">
+    <a href="?{% query_replace export='csv' %}" class="inline-flex items-center gap-1.5 min-h-11 sm:min-h-0 px-3.5 py-2 rounded-lg text-xs font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors">
+      Ekspor CSV
+    </a>
+    <a href="?{% query_replace export='pdf' %}" class="inline-flex items-center gap-1.5 min-h-11 sm:min-h-0 px-3.5 py-2 rounded-lg text-xs font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+      Ekspor PDF
+    </a>
+  </div>
+</div>
+
+<!-- Filter Bar -->
+<form method="get" class="bg-white border border-slate-200 rounded-xl p-4 mb-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+  <div>
+    <label for="filter-as-of" class="block text-xs font-medium text-slate-600 mb-1">Tanggal Acuan</label>
+    <input id="filter-as-of" type="date" name="as_of" value="{{ filters.as_of }}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white font-mono-num">
+  </div>
+  <div>
+    <label for="filter-category" class="block text-xs font-medium text-slate-600 mb-1">Kategori</label>
+    <select id="filter-category" name="category" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+      <option value="">Semua Kategori</option>
+      {% for c in categories %}
+        <option value="{{ c.pk }}" {% if filters.category == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.code }} — {{ c.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="filter-location" class="block text-xs font-medium text-slate-600 mb-1">Lokasi</label>
+    <select id="filter-location" name="location" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+      <option value="">Semua Lokasi</option>
+      {% for loc in locations %}
+        <option value="{{ loc.pk }}" {% if filters.location == loc.pk|stringformat:"s" %}selected{% endif %}>{{ loc.code }} — {{ loc.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="flex items-center gap-2">
+    <button type="submit" class="flex-1 min-h-11 sm:min-h-0 px-4 py-2 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+      Hitung
+    </button>
+    <a href="{% url 'reports:depreciation_report' %}" class="inline-flex items-center min-h-11 sm:min-h-0 px-3.5 py-2 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
+      Reset
+    </a>
+  </div>
+</form>
+
+<!-- Summary Cards -->
+<section aria-label="Ringkasan Valuasi Aset" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+  <div class="bg-white border border-slate-200 rounded-xl p-4">
+    <p class="text-xs font-medium text-slate-500">Total Harga Perolehan ({{ report.totals.count }} Aset)</p>
+    <p class="mt-1 text-xl font-semibold font-mono-num text-slate-800">{{ report.totals.acquisition_cost|format_rupiah }}</p>
+  </div>
+  <div class="bg-white border border-slate-200 rounded-xl p-4">
+    <p class="text-xs font-medium text-slate-500">Total Akumulasi Penyusutan</p>
+    <p class="mt-1 text-xl font-semibold font-mono-num text-amber-800">{{ report.totals.accumulated_depreciation|format_rupiah }}</p>
+    <p class="text-[11px] text-slate-400 font-mono-num">Rata-rata tersusut {{ report.totals.depreciation_pct }}%</p>
+  </div>
+  <div class="bg-white border border-slate-200 rounded-xl p-4">
+    <p class="text-xs font-medium text-slate-500">Total Nilai Buku Saat Ini</p>
+    <p class="mt-1 text-xl font-semibold font-mono-num text-teal-800">{{ report.totals.book_value|format_rupiah }}</p>
+    <p class="text-[11px] text-slate-400 font-mono-num">Beban/thn: {{ report.totals.annual_depreciation|format_rupiah }}</p>
+  </div>
+</section>
+
+<!-- Depreciation Table -->
+<section class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+  <h2 id="depreciation-table-caption" class="visually-hidden">Tabel perhitungan penyusutan garis lurus per aset</h2>
+  {% if report.rows %}
+  <div tabindex="0" role="region" aria-labelledby="depreciation-table-caption" class="table-wrapper">
+    <table class="text-sm text-left">
+      <thead class="bg-slate-50 text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+        <tr>
+          <th scope="col" class="px-3.5 py-3">Kode &amp; Nama Aset</th>
+          <th scope="col" class="px-3.5 py-3">Tgl Beli</th>
+          <th scope="col" class="px-3.5 py-3 text-right">Harga Perolehan</th>
+          <th scope="col" class="px-3.5 py-3 text-right">Nilai Residu</th>
+          <th scope="col" class="px-3.5 py-3 text-right">Umur / Usia</th>
+          <th scope="col" class="px-3.5 py-3 text-right">Susut / Thn</th>
+          <th scope="col" class="px-3.5 py-3 text-right">Akumulasi Susut</th>
+          <th scope="col" class="px-3.5 py-3 text-right">Nilai Buku</th>
+          <th scope="col" class="px-3.5 py-3 text-right">%</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for row in report.rows %}
+        <tr class="hover:bg-slate-50/70">
+          <td class="px-3.5 py-3">
+            <a href="{% url 'inventory:asset_detail' row.asset.pk %}" class="font-mono-num text-xs font-semibold text-teal-800 hover:underline">{{ row.asset.asset_code }}</a>
+            <p class="text-slate-800 font-medium text-xs mt-0.5">{{ row.asset.name }}</p>
+            <p class="text-[11px] text-slate-400">{{ row.asset.category.code }} &middot; {{ row.asset.location.code }}</p>
+          </td>
+          <td class="px-3.5 py-3 whitespace-nowrap font-mono-num text-xs text-slate-600">{{ row.asset.acquisition_date|date:"Y-m-d" }}</td>
+          <td class="px-3.5 py-3 whitespace-nowrap text-right font-mono-num text-xs text-slate-700">{{ row.acquisition_cost|format_rupiah }}</td>
+          <td class="px-3.5 py-3 whitespace-nowrap text-right font-mono-num text-xs text-slate-500">{{ row.salvage_value|format_rupiah }}</td>
+          <td class="px-3.5 py-3 whitespace-nowrap text-right font-mono-num text-xs text-slate-600">{{ row.useful_life_years }}t / {{ row.age_years }}t</td>
+          <td class="px-3.5 py-3 whitespace-nowrap text-right font-mono-num text-xs text-slate-600">{{ row.annual_depreciation|format_rupiah }}</td>
+          <td class="px-3.5 py-3 whitespace-nowrap text-right font-mono-num text-xs text-amber-800">{{ row.accumulated_depreciation|format_rupiah }}</td>
+          <td class="px-3.5 py-3 whitespace-nowrap text-right font-mono-num text-xs font-semibold text-teal-800">{{ row.book_value|format_rupiah }}</td>
+          <td class="px-3.5 py-3 whitespace-nowrap text-right font-mono-num text-xs text-slate-600">{{ row.depreciation_pct|floatformat:0 }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="bg-teal-50/70 border-t-2 border-teal-700/30 font-semibold text-xs text-slate-800">
+        <tr>
+          <td class="px-3.5 py-3" colspan="2">TOTAL ({{ report.totals.count }} Aset)</td>
+          <td class="px-3.5 py-3 whitespace-nowrap text-right font-mono-num">{{ report.totals.acquisition_cost|format_rupiah }}</td>
+          <td class="px-3.5 py-3 whitespace-nowrap text-right font-mono-num">{{ report.totals.salvage_value|format_rupiah }}</td>
+          <td class="px-3.5 py-3 text-right font-mono-num">-</td>
+          <td class="px-3.5 py-3 whitespace-nowrap text-right font-mono-num">{{ report.totals.annual_depreciation|format_rupiah }}</td>
+          <td class="px-3.5 py-3 whitespace-nowrap text-right font-mono-num text-amber-900">{{ report.totals.accumulated_depreciation|format_rupiah }}</td>
+          <td class="px-3.5 py-3 whitespace-nowrap text-right font-mono-num text-teal-900">{{ report.totals.book_value|format_rupiah }}</td>
+          <td class="px-3.5 py-3 whitespace-nowrap text-right font-mono-num">{{ report.totals.depreciation_pct|floatformat:0 }}%</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {% else %}
+  <div class="p-10 text-center">
+    <p class="text-sm text-slate-600">Tidak ada aset aktif yang sesuai dengan filter yang dipilih.</p>
+    <a href="{% url 'reports:depreciation_report' %}" class="mt-3 inline-flex items-center px-3.5 py-2 rounded-lg text-xs font-medium text-teal-700 bg-teal-50 hover:bg-teal-100">
+      Reset Filter
+    </a>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

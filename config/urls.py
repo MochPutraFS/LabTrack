@@ -5,12 +5,14 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-from apps.core.views import home_redirect
 from apps.inventory.views import asset_qr_scan_view
+from apps.reports.views import dashboard_view
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("", home_redirect, name="home"),
+    path("", include("apps.reports.urls")),
+    path("", dashboard_view, name="home"),
+    path("", include("apps.core.urls")),
     path("accounts/", include("apps.accounts.urls")),
     path("inventory/", include("apps.inventory.urls")),
     path("loans/", include("apps.loans.urls")),
