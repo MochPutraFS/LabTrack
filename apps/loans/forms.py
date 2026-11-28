@@ -3,6 +3,7 @@
 from datetime import timedelta
 
 from django import forms
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
@@ -20,6 +21,33 @@ def borrowable_assets_queryset():
         .exclude(condition=Asset.Condition.MAJOR_DAMAGE)
         .order_by("asset_code")
     )
+
+
+def validate_loan_dates(cleaned, add_error, *, allow_past_borrow_date: bool = False) -> None:
+    """Shared date rules for loan forms.
+
+    - due_date tidak boleh lebih awal dari borrow_date
+    - due_date tidak boleh di masa lalu (pinjaman baru tidak boleh langsung terlambat)
+    - borrow_date tidak boleh di masa lalu untuk pengajuan online
+    - durasi pinjam maksimal settings.LOAN_MAX_DURATION_DAYS
+    """
+    borrow_date = cleaned.get("borrow_date")
+    due_date = cleaned.get("due_date")
+    if not borrow_date or not due_date:
+        return
+
+    today = timezone.localdate()
+    max_days = getattr(settings, "LOAN_MAX_DURATION_DAYS", 14)
+
+    if due_date < borrow_date:
+        add_error("due_date", "Tanggal jatuh tempo tidak boleh lebih awal dari tanggal pinjam.")
+        return
+    if not allow_past_borrow_date and borrow_date < today:
+        add_error("borrow_date", "Tanggal pinjam tidak boleh lebih awal dari hari ini.")
+    if due_date < today:
+        add_error("due_date", "Tanggal jatuh tempo tidak boleh di masa lalu.")
+    if (due_date - borrow_date).days > max_days:
+        add_error("due_date", f"Durasi peminjaman maksimal {max_days} hari.")
 
 
 class LoanOnlineRequestForm(forms.Form):
@@ -73,13 +101,7 @@ class LoanOnlineRequestForm(forms.Form):
 
     def clean(self):
         cleaned = super().clean()
-        borrow_date = cleaned.get("borrow_date")
-        due_date = cleaned.get("due_date")
-        if borrow_date and due_date and due_date < borrow_date:
-            self.add_error(
-                "due_date",
-                "Tanggal jatuh tempo tidak boleh lebih awal dari tanggal pinjam.",
-            )
+        validate_loan_dates(cleaned, self.add_error)
         return cleaned
 
 
@@ -176,13 +198,8 @@ class LoanWalkInForm(forms.Form):
 
     def clean(self):
         cleaned = super().clean()
-        borrow_date = cleaned.get("borrow_date")
-        due_date = cleaned.get("due_date")
-        if borrow_date and due_date and due_date < borrow_date:
-            self.add_error(
-                "due_date",
-                "Tanggal jatuh tempo tidak boleh lebih awal dari tanggal pinjam.",
-            )
+        # Walk-In: laboran boleh mencatat tanggal pinjam hari-hari sebelumnya (pencatatan susulan)
+        validate_loan_dates(cleaned, self.add_error, allow_past_borrow_date=True)
         return cleaned
 
 

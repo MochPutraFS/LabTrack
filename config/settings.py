@@ -126,3 +126,6 @@ LOGOUT_REDIRECT_URL = "accounts:login"
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Loan rules
+LOAN_MAX_DURATION_DAYS = 14  # batas maksimal lama peminjaman (hari)
