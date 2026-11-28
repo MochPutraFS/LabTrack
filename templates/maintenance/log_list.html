@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% load labtrack_tags %}
+
+{% block title %}Riwayat Log Pemeliharaan{% endblock %}
+{% block page_heading %}Pemeliharaan / Log Pemeliharaan{% endblock %}
+
+{% block content %}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold text-slate-800 tracking-tight">Riwayat Log Pemeliharaan &amp; Perbaikan</h1>
+    <p class="text-sm text-slate-500 mt-1">
+      Catatan seluruh tindakan pemeliharaan preventif dan perbaikan aset beserta akumulasi biayanya.
+    </p>
+  </div>
+  <div class="shrink-0">
+    <a href="{% url 'maintenance:schedule_list' %}" class="inline-flex items-center px-3.5 py-2.5 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors">
+      Lihat Jadwal Pemeliharaan
+    </a>
+  </div>
+</div>
+
+<!-- Summary KPI Strip -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+  <div class="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between">
+    <div>
+      <p class="text-xs font-medium text-slate-500">Total Catatan Log (Sesuai Filter)</p>
+      <p class="text-2xl font-semibold font-mono-num text-slate-800 mt-1">{{ total_count }}</p>
+    </div>
+    <span class="w-10 h-10 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center font-semibold text-sm">LOG</span>
+  </div>
+  <div class="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between">
+    <div>
+      <p class="text-xs font-medium text-slate-500">Total Biaya Pemeliharaan (Sesuai Filter)</p>
+      <p class="text-2xl font-semibold font-mono-num text-teal-800 mt-1">{{ total_cost|format_rupiah }}</p>
+    </div>
+    <span class="w-10 h-10 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center font-semibold text-sm">Rp</span>
+  </div>
+</div>
+
+<!-- Filter Bar -->
+<search class="block mb-5">
+  <form method="get" action="{% url 'maintenance:log_list' %}" class="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+    <input type="search" name="q" value="{{ filters.q }}" placeholder="Cari tindakan, kode aset, teknisi..." aria-label="Cari log pemeliharaan" class="lg:col-span-2 rounded-lg border border-slate-300 px-3.5 py-2 text-sm">
+
+    <select name="asset" aria-label="Filter aset" class="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+      <option value="">Semua Aset</option>
+      {% for item in assets %}
+        <option value="{{ item.pk }}" {% if filters.asset == item.pk|stringformat:"s" %}selected{% endif %}>{{ item.asset_code }} — {{ item.name|truncatechars:28 }}</option>
+      {% endfor %}
+    </select>
+
+    <input type="date" name="date_from" value="{{ filters.date_from }}" aria-label="Tanggal mulai" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+    <input type="date" name="date_to" value="{{ filters.date_to }}" aria-label="Tanggal akhir" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+
+    <div class="flex gap-2">
+      <button type="submit" class="flex-1 px-3.5 py-2 rounded-lg text-sm font-medium text-white bg-slate-700 hover:bg-slate-800">Filter</button>
+      {% if filters.q or filters.asset or filters.date_from or filters.date_to %}
+        <a href="{% url 'maintenance:log_list' %}" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50">Reset</a>
+      {% endif %}
+    </div>
+  </form>
+</search>
+
+<div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+  <div class="table-wrapper" tabindex="0" role="region" aria-label="Daftar riwayat log pemeliharaan">
+    <table class="w-full text-left border-collapse">
+      <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+        <tr>
+          <th class="px-4 py-3">Tanggal</th>
+          <th class="px-4 py-3">Aset</th>
+          <th class="px-4 py-3">Ringkasan Tindakan &amp; Sumber</th>
+          <th class="px-4 py-3">Teknisi</th>
+          <th class="px-4 py-3">Kondisi Akhir</th>
+          <th class="px-4 py-3 text-right">Biaya (Rp)</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-200 text-sm">
+        {% for log in page_obj %}
+        <tr class="hover:bg-slate-50/70">
+          <td class="px-4 py-3 whitespace-nowrap font-mono-num text-xs text-slate-700">
+            {{ log.performed_date|date:"d M Y" }}
+          </td>
+          <td class="px-4 py-3">
+            <a href="{% url 'inventory:asset_detail' log.asset.pk %}" class="font-medium text-slate-800 hover:text-teal-700 block">{{ log.asset.name }}</a>
+            <span class="text-xs font-mono-num text-slate-500">{{ log.asset.asset_code }}</span>
+          </td>
+          <td class="px-4 py-3">
+            <p class="text-slate-800">{{ log.summary|truncatechars:120 }}</p>
+            <div class="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              {% if log.schedule %}
+                <span class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200">Jadwal: {{ log.schedule.title|truncatechars:35 }}</span>
+              {% endif %}
+              {% if log.damage_report %}
+                <a href="{% url 'maintenance:damage_detail' log.damage_report.pk %}" class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 hover:underline font-mono-num">
+                  Tiket: {{ log.damage_report.report_number }}
+                </a>
+              {% endif %}
+            </div>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-xs text-slate-700">
+            {% if log.performed_by %}{{ log.performed_by.full_name|default:log.performed_by.username }}{% else %}-{% endif %}
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap">
+            {% status_badge log.result_condition log.get_result_condition_display %}
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-right font-mono-num font-medium text-slate-800">
+            {{ log.cost|format_rupiah }}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="px-4 py-12 text-center">
+            <p class="text-sm font-medium text-slate-700">Belum ada log pemeliharaan yang cocok dengan filter.</p>
+            <p class="text-xs text-slate-500 mt-1">Log pemeliharaan tercipta otomatis saat jadwal dieksekusi atau perbaikan kerusakan diselesaikan.</p>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% if page_obj %}
+      <tfoot class="bg-slate-50 border-t-2 border-slate-200 text-sm font-semibold text-slate-800">
+        <tr>
+          <td colspan="5" class="px-4 py-3 text-right">Total Biaya ({{ total_count }} log):</td>
+          <td class="px-4 py-3 text-right font-mono-num text-teal-800">{{ total_cost|format_rupiah }}</td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+
+{% include "partials/pagination.html" %}
+{% endblock %}

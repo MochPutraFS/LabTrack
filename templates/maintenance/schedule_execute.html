@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% load labtrack_tags %}
+
+{% block title %}Eksekusi Pemeliharaan — {{ schedule.title }}{% endblock %}
+{% block page_heading %}Pemeliharaan / Eksekusi Jadwal{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="mb-5">
+    <a href="{% url 'maintenance:schedule_list' %}" class="text-xs font-medium text-slate-500 hover:text-teal-700">&larr; Kembali ke Jadwal Pemeliharaan</a>
+    <h1 class="text-2xl font-semibold text-slate-800 tracking-tight mt-1">Catat Eksekusi Pemeliharaan</h1>
+    <p class="text-sm text-slate-500 mt-1">
+      Rekam tindakan pemeliharaan, biaya suku cadang, serta kondisi akhir aset untuk memperbarui jadwal otomatis.
+    </p>
+  </div>
+
+  <!-- Schedule Summary Card -->
+  <div class="bg-white border border-slate-200 rounded-xl p-5 mb-5">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h2 class="text-base font-semibold text-slate-800">{{ schedule.title }}</h2>
+        <p class="text-xs font-mono-num text-slate-500 mt-0.5">
+          {{ schedule.asset.asset_code }} — {{ schedule.asset.name }} ({{ schedule.asset.location.code }})
+        </p>
+      </div>
+      <div class="flex items-center gap-1.5">
+        {% status_badge schedule.status schedule.get_status_display %}
+      </div>
+    </div>
+    <dl class="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+      <div>
+        <dt class="text-slate-500">Frekuensi</dt>
+        <dd class="font-medium text-slate-800 mt-0.5">{{ schedule.get_frequency_display }}</dd>
+      </div>
+      <div>
+        <dt class="text-slate-500">Jatuh Tempo Saat Ini</dt>
+        <dd class="font-mono-num font-medium text-slate-800 mt-0.5">{{ schedule.next_due_date|date:"d M Y" }}</dd>
+      </div>
+      <div>
+        <dt class="text-slate-500">Efek Setelah Eksekusi</dt>
+        <dd class="font-medium text-teal-800 mt-0.5">
+          {% if schedule.frequency == 'ONCE' %}
+            Status jadwal menjadi Selesai
+          {% else %}
+            Jatuh tempo maju otomatis ({{ schedule.get_frequency_display }})
+          {% endif %}
+        </dd>
+      </div>
+    </dl>
+    {% if schedule.description %}
+    <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-600">
+      <span class="font-medium text-slate-700">Checklist:</span> {{ schedule.description }}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Execution Form -->
+  <div class="bg-white border border-slate-200 rounded-xl p-6">
+    {% if form.non_field_errors %}
+    <div role="alert" class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+      {% for error in form.non_field_errors %}
+        <p>{{ error }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="{{ form.performed_date.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+            {{ form.performed_date.label }} <span aria-hidden="true" class="text-red-600">*</span>
+          </label>
+          {{ form.performed_date }}
+          {% for error in form.performed_date.errors %}
+            <p class="mt-1 text-xs text-red-700">{{ error }}</p>
+          {% endfor %}
+        </div>
+
+        <div>
+          <label for="{{ form.result_condition.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+            {{ form.result_condition.label }} <span aria-hidden="true" class="text-red-600">*</span>
+          </label>
+          {{ form.result_condition }}
+          {% for error in form.result_condition.errors %}
+            <p class="mt-1 text-xs text-red-700">{{ error }}</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div>
+        <label for="{{ form.cost.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+          {{ form.cost.label }} <span aria-hidden="true" class="text-red-600">*</span>
+        </label>
+        {{ form.cost }}
+        {% for error in form.cost.errors %}
+          <p class="mt-1 text-xs text-red-700">{{ error }}</p>
+        {% endfor %}
+      </div>
+
+      <div>
+        <label for="{{ form.summary.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+          {{ form.summary.label }} <span aria-hidden="true" class="text-red-600">*</span>
+        </label>
+        {{ form.summary }}
+        {% for error in form.summary.errors %}
+          <p class="mt-1 text-xs text-red-700">{{ error }}</p>
+        {% endfor %}
+      </div>
+
+      <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2.5">
+        <a href="{% url 'maintenance:schedule_list' %}" class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50">Batal</a>
+        <button type="submit" class="px-5 py-2 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+          Simpan Log &amp; Selesaikan Siklus
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -14,6 +14,7 @@ urlpatterns = [
     path("accounts/", include("apps.accounts.urls")),
     path("inventory/", include("apps.inventory.urls")),
     path("loans/", include("apps.loans.urls")),
+    path("maintenance/", include("apps.maintenance.urls")),
     path("scan/<str:asset_code>/", asset_qr_scan_view, name="asset_qr_scan"),
 ]
 

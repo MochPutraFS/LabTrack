@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% load labtrack_tags %}
+
+{% block title %}Jadwal Pemeliharaan Berkala{% endblock %}
+{% block page_heading %}Pemeliharaan / Jadwal Pemeliharaan{% endblock %}
+
+{% block content %}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold text-slate-800 tracking-tight">Jadwal Pemeliharaan Berkala</h1>
+    <p class="text-sm text-slate-500 mt-1">
+      Kelola jadwal pemeliharaan preventif aset laboratorium beserta pengingat jatuh tempo H-7 dan keterlambatan.
+    </p>
+  </div>
+  <div class="flex items-center gap-2.5 shrink-0">
+    <a href="{% url 'maintenance:log_list' %}" class="inline-flex items-center px-3.5 py-2.5 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors">
+      Lihat Log &amp; Biaya
+    </a>
+    <a href="{% url 'maintenance:schedule_create' %}" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+      <span>+ Tambah Jadwal</span>
+    </a>
+  </div>
+</div>
+
+<!-- Visual Highlight Banners for OVERDUE and H-7 Due Soon -->
+{% if overdue_count or due_soon_count %}
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+  {% if overdue_count %}
+  <a href="{% url 'maintenance:schedule_list' %}?due=overdue" class="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 hover:bg-red-100/70 transition-colors">
+    <div>
+      <p class="text-sm font-semibold text-red-900">{{ overdue_count }} Jadwal Terlambat (OVERDUE)</p>
+      <p class="text-xs text-red-800 mt-0.5">Melewati tanggal jatuh tempo — klik untuk memfilter jadwal terlambat.</p>
+    </div>
+    <span class="font-mono-num text-lg font-bold text-red-800 shrink-0">{{ overdue_count }}</span>
+  </a>
+  {% endif %}
+  {% if due_soon_count %}
+  <a href="{% url 'maintenance:schedule_list' %}?due=due_soon" class="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 hover:bg-amber-100/70 transition-colors">
+    <div>
+      <p class="text-sm font-semibold text-amber-900">{{ due_soon_count }} Jadwal Jatuh Tempo H-7</p>
+      <p class="text-xs text-amber-800 mt-0.5">Akan jatuh tempo dalam 7 hari ke depan — klik untuk memfilter.</p>
+    </div>
+    <span class="font-mono-num text-lg font-bold text-amber-800 shrink-0">{{ due_soon_count }}</span>
+  </a>
+  {% endif %}
+</div>
+{% endif %}
+
+<search class="block mb-5">
+  <form method="get" action="{% url 'maintenance:schedule_list' %}" class="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+    <input type="search" name="q" value="{{ filters.q }}" placeholder="Cari judul, kode aset, nama aset, teknisi..." aria-label="Cari jadwal pemeliharaan" class="lg:col-span-2 rounded-lg border border-slate-300 px-3.5 py-2 text-sm">
+
+    <select name="status" aria-label="Filter status jadwal" class="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+      <option value="">Semua Status</option>
+      {% for val, label in statuses %}
+        <option value="{{ val }}" {% if filters.status == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+
+    <select name="frequency" aria-label="Filter frekuensi" class="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+      <option value="">Semua Frekuensi</option>
+      {% for val, label in frequencies %}
+        <option value="{{ val }}" {% if filters.frequency == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+
+    <div class="flex gap-2">
+      <button type="submit" class="flex-1 px-3.5 py-2 rounded-lg text-sm font-medium text-white bg-slate-700 hover:bg-slate-800">Filter</button>
+      {% if filters.q or filters.status or filters.frequency or filters.due %}
+        <a href="{% url 'maintenance:schedule_list' %}" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50">Reset</a>
+      {% endif %}
+    </div>
+  </form>
+</search>
+
+<div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+  <div class="table-wrapper" tabindex="0" role="region" aria-label="Daftar jadwal pemeliharaan">
+    <table class="w-full text-left border-collapse">
+      <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+        <tr>
+          <th class="px-4 py-3">Kegiatan &amp; Aset</th>
+          <th class="px-4 py-3">Frekuensi</th>
+          <th class="px-4 py-3">Jatuh Tempo</th>
+          <th class="px-4 py-3">Teknisi</th>
+          <th class="px-4 py-3">Status</th>
+          <th class="px-4 py-3 text-right">Aksi</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-200 text-sm">
+        {% for sched in page_obj %}
+        <tr class="{% if sched.is_overdue %}bg-red-50/60 hover:bg-red-50{% elif sched.is_due_soon %}bg-amber-50/60 hover:bg-amber-50{% else %}hover:bg-slate-50/70{% endif %}">
+          <td class="px-4 py-3">
+            <span class="font-medium text-slate-800 block">{{ sched.title }}</span>
+            <a href="{% url 'inventory:asset_detail' sched.asset.pk %}" class="text-xs font-mono-num text-teal-800 hover:underline">
+              {{ sched.asset.asset_code }}
+            </a>
+            <span class="text-xs text-slate-500"> &middot; {{ sched.asset.name }} ({{ sched.asset.location.code }})</span>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-xs font-medium text-slate-700">
+            {{ sched.get_frequency_display }}
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap">
+            <span class="font-mono-num text-xs font-semibold {% if sched.is_overdue %}text-red-800{% elif sched.is_due_soon %}text-amber-800{% else %}text-slate-700{% endif %} block">
+              {{ sched.next_due_date|date:"d M Y" }}
+            </span>
+            {% if sched.is_overdue %}
+              <span class="inline-block mt-0.5 text-[11px] font-medium px-1.5 py-0.5 rounded bg-red-100 text-red-800">Lewat Jatuh Tempo</span>
+            {% elif sched.is_due_soon %}
+              <span class="inline-block mt-0.5 text-[11px] font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Jatuh Tempo H-7</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-xs text-slate-700">
+            {% if sched.assigned_to %}{{ sched.assigned_to.full_name|default:sched.assigned_to.username }}{% else %}<span class="text-slate-400">Belum ditentukan</span>{% endif %}
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap">{% status_badge sched.status sched.get_status_display %}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap">
+            <div class="inline-flex items-center gap-1.5">
+              <a href="{% url 'maintenance:schedule_edit' sched.pk %}" class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50">Edit</a>
+              {% if sched.status not in 'COMPLETED,CANCELLED' %}
+              <a href="{% url 'maintenance:schedule_execute' sched.pk %}" class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-teal-700 hover:bg-teal-800">Eksekusi</a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="px-4 py-12 text-center">
+            <p class="text-sm font-medium text-slate-700">Belum ada jadwal pemeliharaan ditemukan.</p>
+            <p class="text-xs text-slate-500 mt-1">Buat jadwal pemeliharaan berkala untuk menjaga keandalan dan umur ekonomis aset laboratorium.</p>
+            <div class="mt-3">
+              <a href="{% url 'maintenance:schedule_create' %}" class="inline-flex items-center px-3.5 py-2 rounded-lg text-xs font-medium text-white bg-teal-700 hover:bg-teal-800">+ Buat Jadwal Pertama</a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% include "partials/pagination.html" %}
+{% endblock %}

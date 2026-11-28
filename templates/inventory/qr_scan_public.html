@@ -67,15 +67,17 @@
         Tidak Tersedia untuk Walk-In ({{ asset.get_status_display }})
       </span>
       {% endif %}
+      {% if asset.status != 'RETIRED' %}
+      <a href="{% url 'maintenance:damage_create' %}?asset={{ asset.pk }}" class="w-full text-center py-2.5 px-4 rounded-lg text-sm font-medium text-amber-900 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors">
+        Laporkan Kerusakan Aset
+      </a>
+      {% endif %}
       <a href="{% url 'inventory:asset_detail' asset.pk %}" class="w-full text-center py-2.5 px-4 rounded-lg text-sm font-medium text-teal-800 bg-teal-50 hover:bg-teal-100 transition-colors">
         Buka Detail &amp; Riwayat Lengkap
       </a>
       <a href="{% url 'inventory:asset_edit' asset.pk %}" class="w-full text-center py-2 px-4 rounded-lg text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors">
         Ubah Data / Mutasi Aset
       </a>
-      <p class="text-[11px] text-slate-500 text-center pt-1">
-        Aksi Laporkan Kerusakan akan aktif otomatis pada Sesi 4.
-      </p>
     </div>
   </section>
   {% endif %}

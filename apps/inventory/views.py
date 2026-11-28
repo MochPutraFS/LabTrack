@@ -198,7 +198,7 @@ def asset_detail_view(request, pk: int):
 
     location_histories = asset.location_histories.select_related("from_location", "to_location", "moved_by")
     damage_reports = asset.damage_reports.select_related("reported_by", "handled_by")
-    maintenance_logs = asset.maintenance_logs.select_related("performed_by", "schedule")
+    maintenance_logs = asset.maintenance_logs.select_related("performed_by", "schedule", "damage_report")
 
     if request.user.is_staff_lab:
         loan_items = asset.loan_items.select_related("loan", "loan__borrower_user").order_by("-loan__created_at")
