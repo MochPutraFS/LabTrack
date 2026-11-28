@@ -1,0 +1,40 @@
+# Environment & secrets
+.env
+
+# Python / Virtualenv
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+media/
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Local helper tools & temp clones
+_tools/
+_tools_temp/
+
+# Project docs
+docs/
+README.md
