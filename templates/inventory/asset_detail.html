@@ -1,0 +1,384 @@
+{% extends "base.html" %}
+{% load labtrack_tags %}
+
+{% block title %}{{ asset.asset_code }} — {{ asset.name }}{% endblock %}
+{% block page_heading %}Inventaris / {{ asset.asset_code }}{% endblock %}
+
+{% block content %}
+<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <a href="{% url 'inventory:asset_list' %}" class="text-xs font-medium text-slate-500 hover:text-teal-700">&larr; Kembali ke Daftar Aset</a>
+    <div class="flex flex-wrap items-center gap-2.5 mt-1">
+      <h1 class="text-2xl font-semibold text-slate-800 tracking-tight">{{ asset.name }}</h1>
+      {% status_badge asset.status asset.get_status_display %}
+      {% status_badge asset.condition asset.get_condition_display %}
+    </div>
+    <p class="text-xs font-mono-num text-slate-500 mt-1">{{ asset.asset_code }} &middot; {{ asset.category.name }} &middot; {{ asset.location.code }} ({{ asset.location.name }})</p>
+  </div>
+</div>
+
+{% if asset.status == 'RETIRED' %}
+<div class="mb-5 rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-sm text-slate-700">
+  <strong>Aset Dihapusbukukan (RETIRED)</strong>{% if asset.retired_at %} pada {{ asset.retired_at|date:"d M Y H:i" }}{% endif %}.
+  {% if asset.retirement_reason %}<span class="block text-xs text-slate-600 mt-0.5">Alasan: {{ asset.retirement_reason }}</span>{% endif %}
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+  <!-- Left Column (8 cols): Specifications + History Tabs -->
+  <div class="lg:col-span-8 space-y-6">
+    <!-- Spec Card -->
+    <div class="bg-white border border-slate-200 rounded-xl p-6">
+      <h2 class="text-base font-semibold text-slate-800 mb-4">Informasi &amp; Spesifikasi Aset</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+        <div>
+          <span class="block text-xs text-slate-500">Merek / Model</span>
+          <span class="font-medium text-slate-800">{{ asset.brand|default:"-" }}{% if asset.model_name %} {{ asset.model_name }}{% endif %}</span>
+        </div>
+        <div>
+          <span class="block text-xs text-slate-500">Nomor Seri</span>
+          <span class="font-mono-num font-medium text-slate-800">{{ asset.serial_number|default:"-" }}</span>
+        </div>
+        <div>
+          <span class="block text-xs text-slate-500">Kategori</span>
+          <span class="font-medium text-slate-800">{{ asset.category.code }} — {{ asset.category.name }}</span>
+        </div>
+        <div>
+          <span class="block text-xs text-slate-500">Lokasi Saat Ini</span>
+          <span class="font-medium text-slate-800">{{ asset.location.code }} — {{ asset.location.name }}</span>
+        </div>
+        <div>
+          <span class="block text-xs text-slate-500">Tanggal Perolehan</span>
+          <span class="font-mono-num font-medium text-slate-800">{{ asset.acquisition_date|date:"d M Y" }}</span>
+        </div>
+        <div>
+          <span class="block text-xs text-slate-500">Umur Ekonomis</span>
+          <span class="font-mono-num font-medium text-slate-800">{{ asset.useful_life_years }} Tahun</span>
+        </div>
+      </div>
+
+      {% if asset.specifications %}
+      <div class="mt-4 pt-4 border-t border-slate-200">
+        <span class="block text-xs text-slate-500 mb-1">Catatan Spesifikasi</span>
+        <p class="text-sm text-slate-700 whitespace-pre-line">{{ asset.specifications }}</p>
+      </div>
+      {% endif %}
+
+      {% if asset.photo %}
+      <div class="mt-4 pt-4 border-t border-slate-200">
+        <span class="block text-xs text-slate-500 mb-2">Foto Aset</span>
+        <img src="{{ asset.photo.url }}" alt="Foto {{ asset.name }}" class="max-h-64 rounded-lg border border-slate-200 object-cover">
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Accessible History Tabs -->
+    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden" data-tabs>
+      <div class="lt-tablist px-3" role="tablist" aria-label="Riwayat aset">
+        <button type="button" role="tab" id="tab-loc" aria-selected="true" class="lt-tab">
+          Mutasi Lokasi ({{ location_histories|length }})
+        </button>
+        <button type="button" role="tab" id="tab-loan" aria-selected="false" tabindex="-1" class="lt-tab">
+          Peminjaman ({{ loan_items|length }})
+        </button>
+        <button type="button" role="tab" id="tab-dmg" aria-selected="false" tabindex="-1" class="lt-tab">
+          Kerusakan ({{ damage_reports|length }})
+        </button>
+        <button type="button" role="tab" id="tab-mnt" aria-selected="false" tabindex="-1" class="lt-tab">
+          Pemeliharaan ({{ maintenance_logs|length }})
+        </button>
+      </div>
+
+      <!-- Panel 1: Location Histories -->
+      <div role="tabpanel" aria-labelledby="tab-loc" tabindex="0">
+        <div class="p-5">
+          {% if location_histories %}
+          <ol class="space-y-3">
+            {% for h in location_histories %}
+            <li class="flex items-start justify-between gap-4 pb-3 border-b border-slate-100 last:border-0 last:pb-0">
+              <div>
+                <p class="text-sm font-medium text-slate-800">
+                  {% if h.from_location %}{{ h.from_location.code }} &rarr; {% else %}<span class="text-slate-400">Penempatan Awal &rarr;</span> {% endif %}
+                  <span class="text-teal-800">{{ h.to_location.code }} ({{ h.to_location.name }})</span>
+                </p>
+                <p class="text-xs text-slate-500 mt-0.5">{{ h.reason|default:"-" }}</p>
+              </div>
+              <div class="text-right shrink-0 text-xs text-slate-500">
+                <p class="font-mono-num">{{ h.moved_at|date:"d M Y H:i" }}</p>
+                {% if h.moved_by %}<p>{{ h.moved_by.full_name|default:h.moved_by.username }}</p>{% endif %}
+              </div>
+            </li>
+            {% endfor %}
+          </ol>
+          {% else %}
+            <p class="text-sm text-slate-500 text-center py-6">Belum ada riwayat mutasi lokasi.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Panel 2: Loans -->
+      <div role="tabpanel" aria-labelledby="tab-loan" hidden="until-found">
+        <div class="p-5">
+          {% if loan_items %}
+          <div class="space-y-3">
+            {% for item in loan_items %}
+            <div class="flex items-center justify-between gap-3 pb-3 border-b border-slate-100 last:border-0 last:pb-0 text-sm">
+              <div>
+                <a href="{% url 'loans:loan_detail' item.loan.pk %}" class="font-mono-num font-medium text-teal-800 hover:underline">{{ item.loan.loan_number }}</a>
+                <p class="text-xs text-slate-500">
+                  {% if user.is_staff_lab %}{{ item.loan.borrower_name }} &middot; {% endif %}
+                  {{ item.loan.borrow_date|date:"d M Y" }} s.d. {{ item.loan.due_date|date:"d M Y" }}
+                  {% if item.condition_on_return %} &middot; Kembali: {{ item.get_condition_on_return_display }}{% endif %}
+                </p>
+              </div>
+              <div class="flex items-center gap-1.5">
+                {% status_badge item.loan.loan_channel item.loan.get_loan_channel_display %}
+                {% status_badge item.loan.status item.loan.get_status_display %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+            <p class="text-sm text-slate-500 text-center py-6">Belum ada riwayat peminjaman untuk aset ini.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Panel 3: Damage Reports -->
+      <div role="tabpanel" aria-labelledby="tab-dmg" hidden="until-found">
+        <div class="p-5">
+          {% if damage_reports %}
+          <div class="space-y-3">
+            {% for d in damage_reports %}
+            <div class="flex items-start justify-between gap-3 pb-3 border-b border-slate-100 last:border-0 last:pb-0 text-sm">
+              <div>
+                <p class="font-mono-num font-medium text-slate-800">{{ d.report_number }}</p>
+                <p class="text-xs text-slate-600 mt-0.5">{{ d.description|truncatechars:120 }}</p>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                {% status_badge d.severity d.get_severity_display %}
+                {% status_badge d.status d.get_status_display %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+            <p class="text-sm text-slate-500 text-center py-6">Belum ada laporan kerusakan untuk aset ini.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Panel 4: Maintenance Logs -->
+      <div role="tabpanel" aria-labelledby="tab-mnt" hidden="until-found">
+        <div class="p-5">
+          {% if maintenance_logs %}
+          <div class="space-y-3">
+            {% for m in maintenance_logs %}
+            <div class="flex items-start justify-between gap-3 pb-3 border-b border-slate-100 last:border-0 last:pb-0 text-sm">
+              <div>
+                <p class="font-medium text-slate-800">{{ m.summary|truncatechars:120 }}</p>
+                <p class="text-xs text-slate-500 mt-0.5">
+                  {{ m.performed_date|date:"d M Y" }}
+                  {% if m.performed_by %} &middot; {{ m.performed_by.full_name|default:m.performed_by.username }}{% endif %}
+                </p>
+              </div>
+              <div class="text-right shrink-0">
+                {% if user.is_staff_lab %}<p class="font-mono-num text-xs font-medium text-slate-700 mb-1">{{ m.cost|format_rupiah }}</p>{% endif %}
+                {% status_badge m.result_condition m.get_result_condition_display %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+            <p class="text-sm text-slate-500 text-center py-6">Belum ada log pemeliharaan untuk aset ini.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column (4 cols): QR Card, Valuation (Staff), Actions -->
+  <div class="lg:col-span-4 space-y-6">
+    <!-- QR Code Card -->
+    <div class="bg-white border border-slate-200 rounded-xl p-5 text-center">
+      <h2 class="text-base font-semibold text-slate-800 mb-3">Identifikasi QR Code</h2>
+      {% if asset.qr_code_image %}
+        <img src="{{ asset.qr_code_image.url }}" alt="QR Code {{ asset.asset_code }}" class="mx-auto w-44 h-44 border border-slate-200 rounded-lg p-2 bg-white">
+      {% endif %}
+      <p class="mt-2 font-mono-num text-xs font-semibold text-slate-700">{{ asset.asset_code }}</p>
+      <div class="mt-4 flex flex-col gap-2">
+        {% if user.is_staff_lab %}
+        <a href="{% url 'inventory:asset_qr_download' asset.pk %}" class="w-full py-2 px-3 rounded-lg text-xs font-medium text-white bg-slate-700 hover:bg-slate-800 transition-colors">
+          Unduh QR Code (PNG)
+        </a>
+        {% endif %}
+        <a href="{% url 'asset_qr_scan' asset.asset_code %}" target="_blank" rel="noopener" class="w-full py-2 px-3 rounded-lg text-xs font-medium text-teal-700 bg-teal-50 hover:bg-teal-100 transition-colors">
+          Buka Halaman Scan Publik
+        </a>
+      </div>
+    </div>
+
+    {% if user.is_staff_lab and valuation %}
+    <!-- Valuation Summary (Staff Only) -->
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+      <h2 class="text-base font-semibold text-slate-800 mb-3">Ringkasan Nilai &amp; Penyusutan</h2>
+      <dl class="space-y-2.5 text-sm">
+        <div class="flex justify-between gap-2">
+          <dt class="text-slate-500">Harga Perolehan</dt>
+          <dd class="font-mono-num font-medium text-slate-800">{{ asset.acquisition_cost|format_rupiah }}</dd>
+        </div>
+        <div class="flex justify-between gap-2">
+          <dt class="text-slate-500">Nilai Residu</dt>
+          <dd class="font-mono-num text-slate-700">{{ asset.salvage_value|format_rupiah }}</dd>
+        </div>
+        <div class="flex justify-between gap-2">
+          <dt class="text-slate-500">Penyusutan / Tahun</dt>
+          <dd class="font-mono-num text-slate-700">{{ valuation.annual_depreciation|format_rupiah }}</dd>
+        </div>
+        <div class="flex justify-between gap-2">
+          <dt class="text-slate-500">Akumulasi ({{ valuation.age_years }} thn)</dt>
+          <dd class="font-mono-num text-amber-800">{{ valuation.accumulated_depreciation|format_rupiah }}</dd>
+        </div>
+        <div class="pt-2.5 border-t border-slate-200 flex justify-between gap-2">
+          <dt class="font-semibold text-slate-800">Nilai Buku Saat Ini</dt>
+          <dd class="font-mono-num font-semibold text-teal-800">{{ valuation.book_value|format_rupiah }}</dd>
+        </div>
+      </dl>
+    </div>
+
+    <!-- Staff Actions -->
+    <div class="bg-white border border-slate-200 rounded-xl p-5 space-y-2.5">
+      <h2 class="text-base font-semibold text-slate-800 mb-2">Aksi Pengelolaan</h2>
+      {% if asset.is_borrowable %}
+      <a href="{% url 'loans:loan_walk_in' %}?asset={{ asset.pk }}" class="block w-full text-center py-2.5 px-4 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+        Catat Pinjaman Walk-In
+      </a>
+      {% endif %}
+      <a href="{% url 'inventory:asset_edit' asset.pk %}" class="block w-full text-center py-2.5 px-4 rounded-lg text-sm font-medium {% if asset.is_borrowable %}text-slate-700 bg-white border border-slate-300 hover:bg-slate-50{% else %}text-white bg-teal-700 hover:bg-teal-800{% endif %} transition-colors">
+        Ubah Data Aset
+      </a>
+      {% if asset.status != 'RETIRED' %}
+      <button type="button" command="show-modal" commandfor="move-asset-dialog" class="w-full py-2.5 px-4 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors">
+        Mutasi Lokasi Ruangan
+      </button>
+      {% endif %}
+      {% if user.is_admin and asset.status != 'RETIRED' %}
+      <button type="button" command="show-modal" commandfor="retire-asset-dialog" class="w-full py-2.5 px-4 rounded-lg text-sm font-medium text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors">
+        Hapusbukukan Aset (RETIRED)
+      </button>
+      {% endif %}
+    </div>
+    {% elif asset.is_borrowable %}
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+      <h2 class="text-base font-semibold text-slate-800 mb-2">Peminjaman Aset</h2>
+      <a href="{% url 'loans:loan_request' %}?asset={{ asset.pk }}" class="block w-full text-center py-2.5 px-4 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+        Ajukan Peminjaman Aset Ini
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% if user.is_staff_lab and move_form and asset.status != 'RETIRED' %}
+<dialog id="move-asset-dialog" closedby="any" aria-labelledby="move-dialog-title" class="lt-dialog">
+  <div class="p-6">
+    <h1 id="move-dialog-title" class="text-base font-semibold text-slate-800">Mutasi Lokasi Aset</h1>
+    <p class="text-xs text-slate-500 mt-1">Lokasi saat ini: <strong>{{ asset.location.code }} — {{ asset.location.name }}</strong></p>
+    <form method="post" action="{% url 'inventory:asset_move' asset.pk %}" class="mt-4 space-y-3.5">
+      {% csrf_token %}
+      {% for field in move_form %}
+        <div>
+          <label for="{{ field.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+            {{ field.label }} <span aria-hidden="true" class="text-red-600">*</span>
+          </label>
+          {{ field }}
+        </div>
+      {% endfor %}
+      <div class="pt-2 flex justify-end gap-2">
+        <button type="button" command="close" commandfor="move-asset-dialog" class="px-3.5 py-2 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50">Batal</button>
+        <button type="submit" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800">Simpan Mutasi</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+{% endif %}
+
+{% if user.is_admin and retire_form and asset.status != 'RETIRED' %}
+<dialog id="retire-asset-dialog" closedby="any" aria-labelledby="retire-dialog-title" class="lt-dialog">
+  <div class="p-6">
+    <h1 id="retire-dialog-title" class="text-base font-semibold text-red-800">Hapusbukukan Aset {{ asset.asset_code }}?</h1>
+    <p class="text-sm text-slate-600 mt-1.5">
+      Aset akan diubah statusnya menjadi <strong>Dihapusbukukan (RETIRED)</strong> dan tidak lagi dapat dipinjam, namun seluruh riwayat audit tetap tersimpan.
+    </p>
+    <form method="post" action="{% url 'inventory:asset_retire' asset.pk %}" class="mt-4 space-y-3.5">
+      {% csrf_token %}
+      <div>
+        <label for="{{ retire_form.reason.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+          {{ retire_form.reason.label }} <span aria-hidden="true" class="text-red-600">*</span>
+        </label>
+        {{ retire_form.reason }}
+      </div>
+      <div class="pt-2 flex justify-end gap-2">
+        <button type="button" command="close" commandfor="retire-asset-dialog" autofocus class="px-3.5 py-2 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50">Batal</button>
+        <button type="submit" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-700 hover:bg-red-800">Ya, Hapusbukukan</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Accessible tabs with roving tabindex & find-in-page beforematch sync (modern-web-guidance: tabs)
+  (function () {
+    const root = document.querySelector('[data-tabs]');
+    if (!root) return;
+    const tabs = Array.from(root.querySelectorAll('[role="tab"]'));
+    const panels = Array.from(root.querySelectorAll('[role="tabpanel"]'));
+
+    const activate = (targetTab, focusTab = false) => {
+      tabs.forEach((tab, idx) => {
+        const selected = tab === targetTab;
+        tab.setAttribute('aria-selected', String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+        const panel = panels[idx];
+        if (!panel) return;
+        if (selected) {
+          panel.removeAttribute('hidden');
+          panel.tabIndex = 0;
+        } else {
+          panel.setAttribute('hidden', 'until-found');
+          panel.removeAttribute('tabindex');
+        }
+      });
+      if (focusTab) {
+        targetTab.focus();
+        targetTab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      }
+    };
+
+    tabs.forEach((tab, idx) => {
+      tab.addEventListener('click', () => activate(tab));
+      tab.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          activate(tabs[(idx + 1) % tabs.length], true);
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          activate(tabs[(idx - 1 + tabs.length) % tabs.length], true);
+        } else if (e.key === 'Home') {
+          e.preventDefault();
+          activate(tabs[0], true);
+        } else if (e.key === 'End') {
+          e.preventDefault();
+          activate(tabs[tabs.length - 1], true);
+        }
+      });
+      if (panels[idx]) {
+        panels[idx].addEventListener('beforematch', () => activate(tab));
+      }
+    });
+  })();
+</script>
+{% endblock %}

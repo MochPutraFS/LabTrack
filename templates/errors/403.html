@@ -1,0 +1,29 @@
+{% extends "base_public.html" %}
+
+{% block title %}403 — Akses Ditolak{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-md bg-white border border-slate-200 rounded-xl p-8 text-center">
+  <div class="mx-auto w-14 h-14 rounded-full flex items-center justify-center mb-4" style="background-color:#FEF2F2;color:#991B1B;border:1px solid #FECACA;">
+    <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008v.008H12v-.008ZM21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+    </svg>
+  </div>
+  <p class="font-mono text-xs font-semibold tracking-wider uppercase text-red-700 mb-1">Error 403</p>
+  <h1 class="text-xl font-semibold text-slate-800 mb-2">Akses Ditolak</h1>
+  <p class="text-sm text-slate-500 mb-6">
+    {{ error_message|default:"Anda tidak memiliki izin peran yang diperlukan untuk mengakses halaman ini." }}
+  </p>
+  <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+    {% if user.is_authenticated %}
+      <a href="{% url 'inventory:asset_list' %}" class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+        Kembali ke Katalog Aset
+      </a>
+    {% else %}
+      <a href="{% url 'accounts:login' %}" class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+        Masuk ke LabTrack
+      </a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

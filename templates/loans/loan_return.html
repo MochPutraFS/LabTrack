@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load labtrack_tags %}
+
+{% block title %}Pengembalian {{ loan.loan_number }}{% endblock %}
+{% block page_heading %}Sirkulasi / {{ loan.loan_number }} / Pengembalian{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl">
+  <div class="mb-5">
+    <a href="{% url 'loans:loan_detail' loan.pk %}" class="text-xs font-medium text-slate-500 hover:text-teal-700">&larr; Kembali ke Detail Peminjaman</a>
+    <div class="flex flex-wrap items-center gap-2.5 mt-1">
+      <h1 class="text-2xl font-semibold text-slate-800 tracking-tight">Inspeksi &amp; Pengembalian Aset</h1>
+      {% status_badge loan.status loan.get_status_display %}
+    </div>
+    <p class="text-sm text-slate-500 mt-1">
+      Transaksi <strong class="font-mono-num">{{ loan.loan_number }}</strong> &middot; Peminjam: <strong>{{ loan.borrower_name }}</strong> ({{ loan.borrower_identifier }}).
+    </p>
+  </div>
+
+  <div class="mb-5 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-xs text-amber-900">
+    <strong>Aturan Sinkronisasi Status Aset:</strong>
+    Aset berkondisi <em>Baik</em> atau <em>Rusak Ringan</em> otomatis kembali berstatus <strong>Tersedia</strong>.
+    Aset berkondisi <em>Rusak Berat</em> otomatis diubah menjadi <strong>Rusak</strong> dan sistem membuat tiket <strong>Laporan Kerusakan</strong> secara otomatis.
+  </div>
+
+  <form method="post" action="{% url 'loans:loan_return' loan.pk %}" class="space-y-5" aria-labelledby="return-form-heading">
+    {% csrf_token %}
+    <h2 id="return-form-heading" class="visually-hidden">Formulir Inspeksi Pengembalian Aset</h2>
+
+    {% if form.non_field_errors %}
+    <div role="alert" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+      {% for err in form.non_field_errors %}<p>{{ err }}</p>{% endfor %}
+    </div>
+    {% endif %}
+
+    {% for row in item_rows %}
+    <fieldset class="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
+      <legend class="text-sm font-semibold text-slate-800 px-1">
+        {{ forloop.counter }}. {{ row.item.asset.name }}
+        <span class="font-mono-num text-xs font-normal text-slate-500">({{ row.item.asset.asset_code }})</span>
+      </legend>
+
+      <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+        <span>Lokasi: <strong>{{ row.item.asset.location.code }}</strong></span>
+        <span>&middot;</span>
+        <span>Kondisi saat keluar: {% status_badge row.item.condition_on_checkout row.item.get_condition_on_checkout_display %}</span>
+      </div>
+
+      <div>
+        <span class="block text-xs font-medium text-slate-700 mb-2">
+          Kondisi Fisik Saat Dikembalikan <span aria-hidden="true" class="text-red-600">*</span>
+        </span>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          {% for radio in row.condition_field %}
+          <label for="{{ radio.id_for_label }}" class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer has-[:checked]:border-teal-600 has-[:checked]:bg-teal-50/50">
+            {{ radio.tag }}
+            <span class="text-sm font-medium text-slate-800">{{ radio.choice_label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        {% if row.condition_field.errors %}
+          <p class="mt-1 text-xs text-red-700" role="alert">{{ row.condition_field.errors|join:", " }}</p>
+        {% endif %}
+      </div>
+
+      <div>
+        <label for="{{ row.notes_field.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+          {{ row.notes_field.label }}
+        </label>
+        {{ row.notes_field }}
+        {% if row.notes_field.errors %}
+          <p class="mt-1 text-xs text-red-700" role="alert">{{ row.notes_field.errors|join:", " }}</p>
+        {% endif %}
+      </div>
+    </fieldset>
+    {% endfor %}
+
+    <div class="flex items-center justify-end gap-3">
+      <a href="{% url 'loans:loan_detail' loan.pk %}" class="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 border border-slate-300 bg-white hover:bg-slate-50">Batal</a>
+      <button type="submit" class="px-5 py-2.5 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">Konfirmasi Pengembalian Aset</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

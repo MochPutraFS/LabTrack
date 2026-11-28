@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% load labtrack_tags %}
+
+{% block title %}Catat Peminjaman Walk-In{% endblock %}
+{% block page_heading %}Sirkulasi / Catat Peminjaman Walk-In{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl">
+  <div class="mb-5">
+    <a href="{% url 'loans:loan_list' %}" class="text-xs font-medium text-slate-500 hover:text-teal-700">&larr; Kembali ke Daftar Peminjaman</a>
+    <div class="flex flex-wrap items-center gap-2.5 mt-1">
+      <h1 class="text-2xl font-semibold text-slate-800 tracking-tight">Catat Peminjaman Langsung (Walk-In)</h1>
+      {% status_badge "WALK_IN" "Walk-In" %}
+    </div>
+    <p class="text-sm text-slate-500 mt-1">
+      Untuk peminjam yang datang langsung ke laboratorium tanpa wajib login. Transaksi langsung berstatus <strong>Sedang Dipinjam</strong> dan aset otomatis berubah menjadi <strong>Dipinjam</strong>.
+    </p>
+  </div>
+
+  {% if preselected_asset %}
+  <div class="mb-5 rounded-xl border border-teal-200 bg-teal-50/70 px-4 py-3 text-sm text-teal-900">
+    Aset <strong class="font-mono-num">{{ preselected_asset.asset_code }}</strong> ({{ preselected_asset.name }}) otomatis dipilih dari halaman sebelumnya.
+  </div>
+  {% endif %}
+
+  <form method="post" action="{% url 'loans:loan_walk_in' %}" class="space-y-6" aria-labelledby="walk-in-form-heading">
+    {% csrf_token %}
+    <h2 id="walk-in-form-heading" class="visually-hidden">Formulir Pencatatan Peminjaman Walk-In</h2>
+
+    {% if form.non_field_errors %}
+    <div role="alert" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+      {% for err in form.non_field_errors %}<p>{{ err }}</p>{% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Section 1: Borrower Identity -->
+    <fieldset class="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
+      <legend class="text-sm font-semibold text-slate-800 px-1">1. Identitas Peminjam</legend>
+
+      <div>
+        <label for="{{ form.borrower_user.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+          {{ form.borrower_user.label }}
+        </label>
+        {{ form.borrower_user }}
+        <p class="text-xs text-slate-500 mt-1">Pilih akun terdaftar untuk mengisi otomatis kolom di bawah, atau biarkan kosong untuk input manual peminjam tanpa akun.</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <label for="{{ form.borrower_name.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+            {{ form.borrower_name.label }} <span aria-hidden="true" class="text-red-600">*</span>
+          </label>
+          {{ form.borrower_name }}
+          {% if form.borrower_name.errors %}<p class="mt-1 text-xs text-red-700">{{ form.borrower_name.errors|join:", " }}</p>{% endif %}
+        </div>
+        <div>
+          <label for="{{ form.borrower_identifier.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+            {{ form.borrower_identifier.label }} <span aria-hidden="true" class="text-red-600">*</span>
+          </label>
+          {{ form.borrower_identifier }}
+          {% if form.borrower_identifier.errors %}<p class="mt-1 text-xs text-red-700">{{ form.borrower_identifier.errors|join:", " }}</p>{% endif %}
+        </div>
+        <div>
+          <label for="{{ form.borrower_contact.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+            {{ form.borrower_contact.label }} <span aria-hidden="true" class="text-red-600">*</span>
+          </label>
+          {{ form.borrower_contact }}
+          {% if form.borrower_contact.errors %}<p class="mt-1 text-xs text-red-700">{{ form.borrower_contact.errors|join:", " }}</p>{% endif %}
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- Section 2: Asset Selection -->
+    <fieldset class="bg-white border border-slate-200 rounded-xl p-5">
+      <legend class="text-sm font-semibold text-slate-800 px-1">2. Pemilihan Aset <span aria-hidden="true" class="text-red-600">*</span></legend>
+      <p class="text-xs text-slate-500 mt-1 mb-3">Hanya aset berstatus <strong>Tersedia</strong> dan tidak Rusak Berat yang dapat dipinjamkan.</p>
+
+      {% if available_assets %}
+      <div class="mb-3">
+        <label for="walkin-asset-search" class="visually-hidden">Cari aset tersedia</label>
+        <input type="search" id="walkin-asset-search" placeholder="Cari cepat berdasarkan kode aset, nama, kategori, atau lokasi..." autocomplete="off" autocorrect="off" spellcheck="false" class="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-800 placeholder:text-slate-400">
+      </div>
+
+      <div id="walkin-asset-list" class="max-h-72 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-lg">
+        {% for asset in available_assets %}
+        <label class="asset-option flex items-start gap-3 px-3.5 py-2.5 hover:bg-slate-50 cursor-pointer" data-search="{{ asset.asset_code|lower }} {{ asset.name|lower }} {{ asset.category.name|lower }} {{ asset.location.code|lower }} {{ asset.location.name|lower }}">
+          <input type="checkbox" name="assets" value="{{ asset.pk }}" {% if asset.pk|stringformat:"s" in selected_asset_ids %}checked{% endif %} class="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-600">
+          <span class="flex-1 min-w-0">
+            <span class="flex flex-wrap items-center gap-2">
+              <span class="font-medium text-sm text-slate-800">{{ asset.name }}</span>
+              {% status_badge asset.condition asset.get_condition_display %}
+            </span>
+            <span class="block text-xs text-slate-500 mt-0.5">
+              <span class="font-mono-num">{{ asset.asset_code }}</span> &middot; {{ asset.category.name }} &middot; {{ asset.location.code }}
+            </span>
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-sm text-slate-500 py-4 text-center border border-dashed border-slate-200 rounded-lg">Tidak ada aset tersedia saat ini.</p>
+      {% endif %}
+
+      {% if form.assets.errors %}
+        <p class="mt-2 text-xs text-red-700" role="alert">{{ form.assets.errors|join:", " }}</p>
+      {% endif %}
+    </fieldset>
+
+    <!-- Section 3: Schedule & Purpose -->
+    <fieldset class="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
+      <legend class="text-sm font-semibold text-slate-800 px-1">3. Jadwal &amp; Keperluan</legend>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="{{ form.borrow_date.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+            {{ form.borrow_date.label }} <span aria-hidden="true" class="text-red-600">*</span>
+          </label>
+          {{ form.borrow_date }}
+          {% if form.borrow_date.errors %}<p class="mt-1 text-xs text-red-700">{{ form.borrow_date.errors|join:", " }}</p>{% endif %}
+        </div>
+        <div>
+          <label for="{{ form.due_date.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+            {{ form.due_date.label }} <span aria-hidden="true" class="text-red-600">*</span>
+          </label>
+          {{ form.due_date }}
+          {% if form.due_date.errors %}<p class="mt-1 text-xs text-red-700">{{ form.due_date.errors|join:", " }}</p>{% endif %}
+        </div>
+      </div>
+
+      <div>
+        <label for="{{ form.purpose.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+          {{ form.purpose.label }} <span aria-hidden="true" class="text-red-600">*</span>
+        </label>
+        {{ form.purpose }}
+        {% if form.purpose.errors %}<p class="mt-1 text-xs text-red-700">{{ form.purpose.errors|join:", " }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label for="{{ form.notes.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+          {{ form.notes.label }}
+        </label>
+        {{ form.notes }}
+        {% if form.notes.errors %}<p class="mt-1 text-xs text-red-700">{{ form.notes.errors|join:", " }}</p>{% endif %}
+      </div>
+    </fieldset>
+
+    <div class="flex items-center justify-end gap-3">
+      <a href="{% url 'loans:loan_list' %}" class="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 border border-slate-300 bg-white hover:bg-slate-50">Batal</a>
+      <button type="submit" class="px-5 py-2.5 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">Catat &amp; Serahkan Aset</button>
+    </div>
+  </form>
+</div>
+
+{{ borrowers_data|json_script:"borrowers-lookup-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    // Auto-fill borrower identity when staff picks a registered borrower account
+    const dataEl = document.getElementById('borrowers-lookup-data');
+    const select = document.getElementById('{{ form.borrower_user.id_for_label }}');
+    const nameInput = document.getElementById('{{ form.borrower_name.id_for_label }}');
+    const idInput = document.getElementById('{{ form.borrower_identifier.id_for_label }}');
+    const contactInput = document.getElementById('{{ form.borrower_contact.id_for_label }}');
+
+    if (dataEl && select && nameInput && idInput && contactInput) {
+      const borrowers = JSON.parse(dataEl.textContent || '{}');
+      select.addEventListener('change', () => {
+        const picked = borrowers[select.value];
+        if (picked) {
+          nameInput.value = picked.name || '';
+          idInput.value = picked.identifier || '';
+          contactInput.value = picked.contact || '';
+        }
+      });
+    }
+
+    // Fast client-side filter for asset checklist
+    const search = document.getElementById('walkin-asset-search');
+    const items = document.querySelectorAll('#walkin-asset-list .asset-option');
+    if (search && items.length) {
+      search.addEventListener('input', () => {
+        const term = search.value.trim().toLowerCase();
+        items.forEach((el) => {
+          el.classList.toggle('hidden', Boolean(term && !el.dataset.search.includes(term)));
+        });
+      });
+    }
+  })();
+</script>
+{% endblock %}

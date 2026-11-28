@@ -1,0 +1,83 @@
+{% extends "base_public.html" %}
+{% load labtrack_tags %}
+
+{% block title %}{{ asset.asset_code }} — Kartu Aset Publik{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-lg space-y-4">
+  <!-- Public Read-Only Asset Identity Card (NO sensitive data: no borrower info, no acquisition cost) -->
+  <article class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+    {% if asset.photo %}
+      <img src="{{ asset.photo.url }}" alt="Foto {{ asset.name }}" class="w-full h-48 object-cover border-b border-slate-200">
+    {% endif %}
+
+    <div class="p-6">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+        <span class="font-mono-num text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-100 text-slate-700">{{ asset.asset_code }}</span>
+        <div class="flex items-center gap-1.5">
+          {% status_badge asset.status asset.get_status_display %}
+          {% status_badge asset.condition asset.get_condition_display %}
+        </div>
+      </div>
+
+      <h1 class="text-xl font-semibold text-slate-800 tracking-tight">{{ asset.name }}</h1>
+      {% if asset.brand or asset.model_name %}
+        <p class="text-sm text-slate-500 mt-0.5">{{ asset.brand }} {{ asset.model_name }}</p>
+      {% endif %}
+
+      <dl class="mt-5 pt-4 border-t border-slate-200 grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <dt class="text-xs text-slate-500">Kategori</dt>
+          <dd class="font-medium text-slate-800 mt-0.5">{{ asset.category.name }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs text-slate-500">Lokasi Terdaftar</dt>
+          <dd class="font-medium text-slate-800 mt-0.5">{{ asset.location.code }} — {{ asset.location.name }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs text-slate-500">Status Ketersediaan</dt>
+          <dd class="font-medium text-slate-800 mt-0.5">{{ asset.get_status_display }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs text-slate-500">Kondisi Fisik</dt>
+          <dd class="font-medium text-slate-800 mt-0.5">{{ asset.get_condition_display }}</dd>
+        </div>
+      </dl>
+
+      <p class="mt-5 pt-4 border-t border-slate-100 text-xs text-slate-400">
+        Kartu identitas publik LabTrack (hanya baca). Data peminjam dan nilai perolehan dilindungi.
+      </p>
+    </div>
+  </article>
+
+  <!-- Staff Quick Actions Panel (ONLY rendered for authenticated ADMIN or LABORAN) -->
+  {% if is_staff_viewer %}
+  <section aria-labelledby="staff-actions-heading" class="bg-white border border-teal-200 rounded-xl p-5">
+    <div class="flex items-center justify-between mb-3">
+      <h2 id="staff-actions-heading" class="text-sm font-semibold text-teal-900">Panel Aksi Cepat Staf</h2>
+      {% status_badge user.role user.get_role_display %}
+    </div>
+    <div class="grid grid-cols-1 gap-2.5">
+      {% if asset.is_borrowable %}
+      <a href="{% url 'loans:loan_walk_in' %}?asset={{ asset.pk }}" class="w-full text-center py-2.5 px-4 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+        Catat Pinjaman Walk-In (Aset Ini)
+      </a>
+      {% else %}
+      <span aria-disabled="true" class="w-full text-center py-2.5 px-4 rounded-lg text-xs font-medium text-slate-500 bg-slate-100 cursor-not-allowed">
+        Tidak Tersedia untuk Walk-In ({{ asset.get_status_display }})
+      </span>
+      {% endif %}
+      <a href="{% url 'inventory:asset_detail' asset.pk %}" class="w-full text-center py-2.5 px-4 rounded-lg text-sm font-medium text-teal-800 bg-teal-50 hover:bg-teal-100 transition-colors">
+        Buka Detail &amp; Riwayat Lengkap
+      </a>
+      <a href="{% url 'inventory:asset_edit' asset.pk %}" class="w-full text-center py-2 px-4 rounded-lg text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors">
+        Ubah Data / Mutasi Aset
+      </a>
+      <p class="text-[11px] text-slate-500 text-center pt-1">
+        Aksi Laporkan Kerusakan akan aktif otomatis pada Sesi 4.
+      </p>
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

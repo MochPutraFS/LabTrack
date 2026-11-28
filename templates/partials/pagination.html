@@ -1,0 +1,26 @@
+{% load labtrack_tags %}
+{% if page_obj and page_obj.paginator.num_pages > 1 %}
+<nav aria-label="Paginasi" class="no-print mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-slate-600">
+  <p>
+    Menampilkan <span class="font-medium text-slate-800">{{ page_obj.start_index }}</span>–<span class="font-medium text-slate-800">{{ page_obj.end_index }}</span>
+    dari <span class="font-medium text-slate-800">{{ page_obj.paginator.count }}</span> data
+  </p>
+  <div class="inline-flex items-center gap-1">
+    {% if page_obj.has_previous %}
+      <a href="?{% query_replace page=page_obj.previous_page_number %}" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700">Sebelumnya</a>
+    {% else %}
+      <span class="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed">Sebelumnya</span>
+    {% endif %}
+
+    <span class="px-3 py-1.5 text-xs font-mono-num text-slate-600">
+      Hal {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+    </span>
+
+    {% if page_obj.has_next %}
+      <a href="?{% query_replace page=page_obj.next_page_number %}" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700">Berikutnya</a>
+    {% else %}
+      <span class="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed">Berikutnya</span>
+    {% endif %}
+  </div>
+</nav>
+{% endif %}

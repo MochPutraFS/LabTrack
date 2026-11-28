@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Cetak Label QR{% endblock %}
+{% block page_heading %}Inventaris / Cetak Label QR{% endblock %}
+
+{% block content %}
+<div class="no-print flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+  <div>
+    <h1 class="text-2xl font-semibold text-slate-800 tracking-tight">Cetak Label QR Code</h1>
+    <p class="text-sm text-slate-500 mt-1">Filter aset lalu cetak langsung atau simpan sebagai PDF (layout grid 3 kolom A4).</p>
+  </div>
+  <button type="button" id="btn-print-qr" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+    <span>Cetak / Simpan PDF</span>
+  </button>
+</div>
+
+<search class="no-print block mb-6">
+  <form method="get" action="{% url 'inventory:asset_qr_print' %}" class="bg-white border border-slate-200 rounded-xl p-4 flex flex-wrap items-center gap-3">
+    <select name="category" aria-label="Filter kategori" class="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+      <option value="">Semua Kategori</option>
+      {% for cat in categories %}
+        <option value="{{ cat.pk }}" {% if selected_category == cat.pk|stringformat:"s" %}selected{% endif %}>{{ cat.code }} — {{ cat.name }}</option>
+      {% endfor %}
+    </select>
+    <select name="location" aria-label="Filter lokasi" class="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+      <option value="">Semua Lokasi</option>
+      {% for loc in locations %}
+        <option value="{{ loc.pk }}" {% if selected_location == loc.pk|stringformat:"s" %}selected{% endif %}>{{ loc.code }} — {{ loc.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-slate-700 hover:bg-slate-800">Terapkan Filter</button>
+    {% if selected_category or selected_location %}
+      <a href="{% url 'inventory:asset_qr_print' %}" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50">Reset</a>
+    {% endif %}
+    <span class="ml-auto text-xs text-slate-500 font-mono-num">{{ assets|length }} label siap cetak</span>
+  </form>
+</search>
+
+{% if assets %}
+<div class="qr-print-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  {% for asset in assets %}
+  <article class="qr-label-card bg-white border border-dashed border-slate-300 rounded-xl p-4 flex flex-col items-center text-center">
+    <span class="text-[10px] font-bold uppercase tracking-widest text-teal-800">LabTrack &middot; Inventaris Lab</span>
+    {% if asset.qr_code_image %}
+      <img src="{{ asset.qr_code_image.url }}" alt="QR {{ asset.asset_code }}" class="w-36 h-36 my-2 object-contain">
+    {% endif %}
+    <p class="font-mono-num text-xs font-bold text-slate-900">{{ asset.asset_code }}</p>
+    <p class="text-xs font-medium text-slate-700 mt-0.5 line-clamp-1">{{ asset.name|truncatechars:36 }}</p>
+    <p class="text-[11px] text-slate-500 mt-0.5 font-mono-num">{{ asset.location.code }} &middot; {{ asset.category.code }}</p>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<div class="bg-white border border-slate-200 rounded-xl p-10 text-center text-slate-500">
+  Tidak ada aset aktif yang cocok dengan filter cetak QR.
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    const btn = document.getElementById('btn-print-qr');
+    if (btn) btn.addEventListener('click', () => window.print());
+  })();
+</script>
+{% endblock %}

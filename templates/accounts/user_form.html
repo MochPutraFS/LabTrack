@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_edit %}Edit Pengguna{% else %}Tambah Pengguna{% endif %}{% endblock %}
+{% block page_heading %}Administrasi / {% if is_edit %}Edit Pengguna{% else %}Tambah Pengguna{% endif %}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <div class="mb-5 flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-800 tracking-tight">
+        {% if is_edit %}Edit Pengguna: {{ target_user.full_name }}{% else %}Tambah Pengguna Baru{% endif %}
+      </h1>
+      <p class="text-sm text-slate-500 mt-1">
+        {% if is_edit %}Ubah peran, status aktif, atau reset kata sandi pengguna.{% else %}Buat akun baru untuk Admin, Laboran, atau Peminjam.{% endif %}
+      </p>
+    </div>
+    <a href="{% url 'accounts:user_list' %}" class="text-sm text-slate-600 hover:text-slate-900">&larr; Kembali</a>
+  </div>
+
+  <div class="bg-white border border-slate-200 rounded-xl p-6">
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+      {% for field in form %}
+        <div>
+          {% if field.field.widget.input_type == 'checkbox' %}
+            <div class="flex items-center gap-2.5 pt-1">
+              {{ field }}
+              <label for="{{ field.id_for_label }}" class="text-sm font-medium text-slate-700">{{ field.label }}</label>
+            </div>
+          {% else %}
+            <label for="{{ field.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1.5">
+              {{ field.label }}{% if field.field.required %} <span aria-hidden="true" class="text-red-600">*</span>{% endif %}
+            </label>
+            {{ field }}
+          {% endif %}
+          {% if field.errors %}<p class="mt-1 text-xs text-red-700">{{ field.errors.0 }}</p>{% endif %}
+        </div>
+      {% endfor %}
+
+      <div class="pt-3 flex items-center justify-end gap-3">
+        <a href="{% url 'accounts:user_list' %}" class="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50">Batal</a>
+        <button type="submit" class="px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+          {% if is_edit %}Simpan Perubahan{% else %}Buat Pengguna{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

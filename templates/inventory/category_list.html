@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load labtrack_tags %}
+
+{% block title %}Kategori Barang{% endblock %}
+{% block page_heading %}Inventaris / Kategori Barang{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <h1 class="text-2xl font-semibold text-slate-800 tracking-tight">Kategori Barang</h1>
+  <p class="text-sm text-slate-500 mt-1">Klasifikasi aset laboratorium beserta ringkasan jumlah dan nilai perolehan.</p>
+</div>
+
+<div class="grid grid-cols-1 {% if user.is_staff_lab %}lg:grid-cols-12{% endif %} gap-6">
+  {% if user.is_staff_lab %}
+  <div class="lg:col-span-4">
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+      <h2 class="text-base font-semibold text-slate-800 mb-4">Tambah Kategori Baru</h2>
+      <form method="post" action="{% url 'inventory:category_list' %}" class="space-y-3.5">
+        {% csrf_token %}
+        {% for field in form %}
+          <div>
+            <label for="{{ field.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+              {{ field.label }}{% if field.field.required %} <span aria-hidden="true" class="text-red-600">*</span>{% endif %}
+            </label>
+            {{ field }}
+            {% if field.errors %}<p class="mt-1 text-xs text-red-700">{{ field.errors.0 }}</p>{% endif %}
+          </div>
+        {% endfor %}
+        <button type="submit" class="w-full py-2.5 px-4 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+          Simpan Kategori
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="{% if user.is_staff_lab %}lg:col-span-8{% endif %}">
+    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div class="table-wrapper" tabindex="0" role="region" aria-label="Daftar kategori barang">
+        <table class="w-full text-left border-collapse">
+          <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+            <tr>
+              <th class="px-4 py-3">Kode</th>
+              <th class="px-4 py-3">Kategori</th>
+              <th class="px-4 py-3 text-center">Umur Default</th>
+              <th class="px-4 py-3 text-right">Jumlah Aset</th>
+              {% if user.is_staff_lab %}
+                <th class="px-4 py-3 text-right">Total Nilai Perolehan</th>
+                <th class="px-4 py-3 text-right">Aksi</th>
+              {% endif %}
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 text-sm">
+            {% for cat in categories %}
+            <tr class="hover:bg-slate-50/70">
+              <td class="px-4 py-3 font-mono-num font-semibold text-teal-800">{{ cat.code }}</td>
+              <td class="px-4 py-3">
+                <p class="font-medium text-slate-800">{{ cat.name }}</p>
+                {% if cat.description %}<p class="text-xs text-slate-500 mt-0.5">{{ cat.description|truncatechars:80 }}</p>{% endif %}
+              </td>
+              <td class="px-4 py-3 text-center font-mono-num text-slate-600">{{ cat.default_useful_life_years }} thn</td>
+              <td class="px-4 py-3 text-right font-mono-num font-medium text-slate-800">{{ cat.asset_count }}</td>
+              {% if user.is_staff_lab %}
+                <td class="px-4 py-3 text-right font-mono-num text-slate-700">{{ cat.total_value|format_rupiah }}</td>
+                <td class="px-4 py-3 text-right whitespace-nowrap">
+                  <a href="{% url 'inventory:category_edit' cat.pk %}" class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium text-teal-700 bg-teal-50 hover:bg-teal-100">Ubah</a>
+                  <button type="button" command="show-modal" commandfor="delete-cat-{{ cat.pk }}" class="ml-1 inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100">Hapus</button>
+
+                  <dialog id="delete-cat-{{ cat.pk }}" closedby="any" aria-labelledby="del-cat-title-{{ cat.pk }}" class="lt-dialog text-left">
+                    <div class="p-6">
+                      <h1 id="del-cat-title-{{ cat.pk }}" class="text-base font-semibold text-slate-800">Hapus Kategori {{ cat.code }}?</h1>
+                      <p class="text-sm text-slate-600 mt-2">
+                        Anda akan menghapus kategori <strong>{{ cat.name }}</strong>. Penghapusan akan ditolak otomatis jika kategori masih digunakan oleh aset.
+                      </p>
+                      <div class="mt-5 flex justify-end gap-2">
+                        <button type="button" command="close" commandfor="delete-cat-{{ cat.pk }}" autofocus class="px-3.5 py-2 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50">Batal</button>
+                        <form method="post" action="{% url 'inventory:category_delete' cat.pk %}">
+                          {% csrf_token %}
+                          <button type="submit" class="px-3.5 py-2 rounded-lg text-sm font-medium text-white bg-red-700 hover:bg-red-800">Ya, Hapus</button>
+                        </form>
+                      </div>
+                    </div>
+                  </dialog>
+                </td>
+              {% endif %}
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="{% if user.is_staff_lab %}6{% else %}4{% endif %}" class="px-4 py-10 text-center text-slate-500">
+                Belum ada kategori barang terdaftar.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

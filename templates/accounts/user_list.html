@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load labtrack_tags %}
+
+{% block title %}Manajemen Pengguna{% endblock %}
+{% block page_heading %}Administrasi / Manajemen Pengguna{% endblock %}
+
+{% block content %}
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold text-slate-800 tracking-tight">Manajemen Pengguna</h1>
+    <p class="text-sm text-slate-500 mt-1">Kelola akun Admin, Laboran, dan Peminjam.</p>
+  </div>
+  <a href="{% url 'accounts:user_create' %}" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+    <span>+ Tambah Pengguna</span>
+  </a>
+</div>
+
+<search class="block mb-5">
+  <form method="get" action="{% url 'accounts:user_list' %}" class="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
+    <input type="search" name="q" value="{{ q }}" placeholder="Cari nama, username, email, NIM/NIP..." aria-label="Cari pengguna" class="sm:col-span-2 rounded-lg border border-slate-300 px-3.5 py-2 text-sm">
+    <select name="role" aria-label="Filter peran" class="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+      <option value="">Semua Peran</option>
+      {% for val, label in roles %}
+        <option value="{{ val }}" {% if selected_role == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <div class="flex gap-2">
+      <select name="status" aria-label="Filter status aktif" class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+        <option value="">Semua Status</option>
+        <option value="active" {% if selected_status == 'active' %}selected{% endif %}>Aktif</option>
+        <option value="inactive" {% if selected_status == 'inactive' %}selected{% endif %}>Nonaktif</option>
+      </select>
+      <button type="submit" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-slate-700 hover:bg-slate-800">Filter</button>
+    </div>
+  </form>
+</search>
+
+<div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+  <div class="table-wrapper" tabindex="0" role="region" aria-label="Daftar pengguna LabTrack">
+    <table class="w-full text-left border-collapse">
+      <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+        <tr>
+          <th class="px-4 py-3">Pengguna</th>
+          <th class="px-4 py-3">NIM / NIP</th>
+          <th class="px-4 py-3">Unit / Prodi</th>
+          <th class="px-4 py-3">Peran</th>
+          <th class="px-4 py-3">Status</th>
+          <th class="px-4 py-3 text-right">Aksi</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-200 text-sm">
+        {% for u in page_obj %}
+        <tr class="hover:bg-slate-50/70">
+          <td class="px-4 py-3">
+            <p class="font-medium text-slate-800">{{ u.full_name|default:u.username }}</p>
+            <p class="text-xs text-slate-500 font-mono-num">@{{ u.username }} &middot; {{ u.email }}</p>
+          </td>
+          <td class="px-4 py-3 font-mono-num text-xs text-slate-700">{{ u.identifier_number|default:"-" }}</td>
+          <td class="px-4 py-3 text-slate-600">{{ u.department|default:"-" }}</td>
+          <td class="px-4 py-3">{% status_badge u.role u.get_role_display %}</td>
+          <td class="px-4 py-3">
+            {% if u.is_active %}
+              {% status_badge "AVAILABLE" "Aktif" %}
+            {% else %}
+              {% status_badge "RETIRED" "Nonaktif" %}
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 text-right">
+            <a href="{% url 'accounts:user_edit' u.pk %}" class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium text-teal-700 bg-teal-50 hover:bg-teal-100">
+              Ubah
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="px-4 py-10 text-center text-slate-500">
+            Tidak ada pengguna yang cocok dengan filter pencarian.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% include "partials/pagination.html" %}
+{% endblock %}

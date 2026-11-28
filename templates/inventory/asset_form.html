@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_edit %}Edit Aset{% else %}Tambah Aset{% endif %}{% endblock %}
+{% block page_heading %}Inventaris / {% if is_edit %}Edit {{ asset.asset_code }}{% else %}Tambah Aset{% endif %}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl">
+  <div class="mb-5 flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-800 tracking-tight">
+        {% if is_edit %}Edit Aset: {{ asset.asset_code }}{% else %}Registrasi Aset Laboratorium{% endif %}
+      </h1>
+      <p class="text-sm text-slate-500 mt-1">
+        {% if is_edit %}Perbarui informasi master data aset.{% else %}QR Code dan riwayat lokasi awal akan dibuat otomatis saat disimpan.{% endif %}
+      </p>
+    </div>
+    <a href="{% if is_edit %}{% url 'inventory:asset_detail' asset.pk %}{% else %}{% url 'inventory:asset_list' %}{% endif %}" class="text-sm text-slate-600 hover:text-slate-900">&larr; Kembali</a>
+  </div>
+
+  <div class="bg-white border border-slate-200 rounded-xl p-6">
+    <form method="post" enctype="multipart/form-data" class="space-y-5">
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+        <div class="rounded-lg border px-4 py-3 text-sm" style="background-color:#FEF2F2;color:#991B1B;border-color:#FECACA;" role="alert">
+          {% for err in form.non_field_errors %}<p>{{ err }}</p>{% endfor %}
+        </div>
+      {% endif %}
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {% for field in form %}
+          <div class="{% if field.name in 'name,specifications,photo' %}sm:col-span-2{% endif %}">
+            <label for="{{ field.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1.5">
+              {{ field.label }}{% if field.field.required %} <span aria-hidden="true" class="text-red-600">*</span>{% endif %}
+            </label>
+            {{ field }}
+            {% if field.help_text %}<p class="mt-1 text-xs text-slate-500">{{ field.help_text }}</p>{% endif %}
+            {% if field.errors %}<p class="mt-1 text-xs text-red-700">{{ field.errors.0 }}</p>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
+        <a href="{% if is_edit %}{% url 'inventory:asset_detail' asset.pk %}{% else %}{% url 'inventory:asset_list' %}{% endif %}" class="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50">Batal</a>
+        <button type="submit" class="px-5 py-2.5 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+          {% if is_edit %}Simpan Perubahan{% else %}Simpan &amp; Buat QR{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

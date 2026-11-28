@@ -1,0 +1,86 @@
+{% extends "base_public.html" %}
+
+{% block title %}Masuk{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-md bg-white border border-slate-200 rounded-xl p-6 sm:p-8">
+  <div class="mb-6">
+    <h1 class="text-xl font-semibold text-slate-800 tracking-tight">Masuk ke LabTrack</h1>
+    <p class="text-sm text-slate-500 mt-1">Gunakan username atau email yang terdaftar.</p>
+  </div>
+
+  {% if form.non_field_errors %}
+    <div class="mb-4 rounded-lg border px-3.5 py-2.5 text-sm" style="background-color:#FEF2F2;color:#991B1B;border-color:#FECACA;" role="alert">
+      {% for error in form.non_field_errors %}
+        <p>{{ error }}</p>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="post" action="{% url 'accounts:login' %}" class="space-y-4">
+    {% csrf_token %}
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+
+    <div>
+      <label for="{{ form.username.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1.5">
+        {{ form.username.label }} <span aria-hidden="true" class="text-red-600">*</span>
+      </label>
+      {{ form.username }}
+      {% if form.username.errors %}
+        <p class="mt-1 text-xs text-red-700">{{ form.username.errors.0 }}</p>
+      {% endif %}
+    </div>
+
+    <div>
+      <div class="flex items-center justify-between mb-1.5">
+        <label for="{{ form.password.id_for_label }}" class="block text-xs font-medium text-slate-700">
+          {{ form.password.label }} <span aria-hidden="true" class="text-red-600">*</span>
+        </label>
+        <button type="button" id="toggle-login-pw" aria-pressed="false" aria-label="Tampilkan kata sandi" class="text-xs font-medium text-teal-700 hover:text-teal-800">
+          Tampilkan
+        </button>
+      </div>
+      {{ form.password }}
+      {% if form.password.errors %}
+        <p class="mt-1 text-xs text-red-700">{{ form.password.errors.0 }}</p>
+      {% endif %}
+    </div>
+
+    <button type="submit" class="w-full py-2.5 px-4 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+      Masuk
+    </button>
+  </form>
+
+  <p class="mt-5 text-center text-sm text-slate-500">
+    Mahasiswa atau Dosen baru?
+    <a href="{% url 'accounts:register' %}" class="font-medium text-teal-700 hover:text-teal-800">Daftar Akun Peminjam</a>
+  </p>
+
+  {% if show_demo_hint %}
+  <div class="mt-6 pt-5 border-t border-slate-200">
+    <p class="text-xs font-semibold text-slate-600 mb-2">Akun Demo Lokal (Password: <code class="font-mono-num bg-slate-100 px-1.5 py-0.5 rounded">LabTrack2026!</code>)</p>
+    <div class="grid grid-cols-1 gap-1 text-xs text-slate-500 font-mono-num">
+      <p><span class="font-sans font-medium text-slate-700">Admin:</span> admin_lab</p>
+      <p><span class="font-sans font-medium text-slate-700">Laboran:</span> laboran_rpl / laboran_jar</p>
+      <p><span class="font-sans font-medium text-slate-700">Peminjam:</span> mhs_andi / dosen_sari</p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    const btn = document.getElementById('toggle-login-pw');
+    const input = document.getElementById('{{ form.password.id_for_label }}');
+    if (!btn || !input) return;
+    btn.addEventListener('click', () => {
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.setAttribute('aria-pressed', String(show));
+      btn.textContent = show ? 'Sembunyikan' : 'Tampilkan';
+    });
+  })();
+</script>
+{% endblock %}

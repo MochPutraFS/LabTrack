@@ -119,9 +119,9 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# Auth redirects (used in later sessions)
+# Auth redirects
 LOGIN_URL = "accounts:login"
-LOGIN_REDIRECT_URL = "reports:dashboard"
+LOGIN_REDIRECT_URL = "home"
 LOGOUT_REDIRECT_URL = "accounts:login"
 
 # Default primary key field type

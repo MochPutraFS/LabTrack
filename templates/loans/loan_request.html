@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% load labtrack_tags %}
+
+{% block title %}Ajukan Peminjaman Online{% endblock %}
+{% block page_heading %}Sirkulasi / Ajukan Peminjaman Online{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl">
+  <div class="mb-5">
+    <a href="{% url 'loans:loan_list' %}" class="text-xs font-medium text-slate-500 hover:text-teal-700">&larr; Kembali ke Daftar Peminjaman</a>
+    <h1 class="text-2xl font-semibold text-slate-800 tracking-tight mt-1">Ajukan Peminjaman Online</h1>
+    <p class="text-sm text-slate-500 mt-1">
+      Pilih aset laboratorium yang tersedia. Pengajuan akan masuk berstatus <strong>Menunggu Persetujuan</strong> untuk ditinjau laboran.
+    </p>
+  </div>
+
+  <form method="post" action="{% url 'loans:loan_request' %}" class="space-y-6" aria-labelledby="online-loan-form-heading">
+    {% csrf_token %}
+    <h2 id="online-loan-form-heading" class="visually-hidden">Formulir Pengajuan Peminjaman Online</h2>
+
+    {% if form.non_field_errors %}
+    <div role="alert" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+      {% for err in form.non_field_errors %}<p>{{ err }}</p>{% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Peminjam Info (read-only from logged-in user) -->
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+      <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Identitas Peminjam</p>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+        <div>
+          <span class="block text-xs text-slate-500">Nama Lengkap</span>
+          <span class="font-medium text-slate-800">{{ user.full_name|default:user.username }}</span>
+        </div>
+        <div>
+          <span class="block text-xs text-slate-500">NIM / NIP</span>
+          <span class="font-mono-num font-medium text-slate-800">{{ user.identifier_number|default:user.username }}</span>
+        </div>
+        <div>
+          <span class="block text-xs text-slate-500">Kontak</span>
+          <span class="font-medium text-slate-800">{{ user.phone_number|default:user.email }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Asset Selection -->
+    <fieldset class="bg-white border border-slate-200 rounded-xl p-5">
+      <legend class="text-sm font-semibold text-slate-800 px-1">1. Pemilihan Aset Tersedia <span aria-hidden="true" class="text-red-600">*</span></legend>
+      <p class="text-xs text-slate-500 mt-1 mb-3">Hanya menampilkan aset aktif berstatus <strong>Tersedia</strong> dan tidak Rusak Berat.</p>
+
+      {% if available_assets %}
+      <div class="mb-3">
+        <label for="asset-filter-input" class="visually-hidden">Cari aset tersedia</label>
+        <input type="search" id="asset-filter-input" placeholder="Ketik kode, nama aset, kategori, atau lokasi untuk menyaring..." autocomplete="off" autocorrect="off" spellcheck="false" class="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-800 placeholder:text-slate-400">
+      </div>
+
+      <div id="asset-checklist" class="max-h-72 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-lg">
+        {% for asset in available_assets %}
+        <label class="asset-option flex items-start gap-3 px-3.5 py-2.5 hover:bg-slate-50 cursor-pointer" data-search="{{ asset.asset_code|lower }} {{ asset.name|lower }} {{ asset.category.name|lower }} {{ asset.location.code|lower }} {{ asset.location.name|lower }}">
+          <input type="checkbox" name="assets" value="{{ asset.pk }}" {% if asset.pk|stringformat:"s" in selected_asset_ids %}checked{% endif %} class="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-600">
+          <span class="flex-1 min-w-0">
+            <span class="flex flex-wrap items-center gap-2">
+              <span class="font-medium text-sm text-slate-800">{{ asset.name }}</span>
+              {% status_badge asset.condition asset.get_condition_display %}
+            </span>
+            <span class="block text-xs text-slate-500 mt-0.5">
+              <span class="font-mono-num">{{ asset.asset_code }}</span> &middot; {{ asset.category.name }} &middot; {{ asset.location.code }}
+            </span>
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-sm text-slate-500 py-4 text-center border border-dashed border-slate-200 rounded-lg">Saat ini tidak ada aset yang tersedia untuk dipinjam.</p>
+      {% endif %}
+
+      {% if form.assets.errors %}
+        <p class="mt-2 text-xs text-red-700" role="alert">{{ form.assets.errors|join:", " }}</p>
+      {% endif %}
+    </fieldset>
+
+    <!-- Schedule & Purpose -->
+    <fieldset class="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
+      <legend class="text-sm font-semibold text-slate-800 px-1">2. Jadwal &amp; Keperluan</legend>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="{{ form.borrow_date.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+            {{ form.borrow_date.label }} <span aria-hidden="true" class="text-red-600">*</span>
+          </label>
+          {{ form.borrow_date }}
+          {% if form.borrow_date.errors %}<p class="mt-1 text-xs text-red-700">{{ form.borrow_date.errors|join:", " }}</p>{% endif %}
+        </div>
+        <div>
+          <label for="{{ form.due_date.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+            {{ form.due_date.label }} <span aria-hidden="true" class="text-red-600">*</span>
+          </label>
+          {{ form.due_date }}
+          {% if form.due_date.errors %}<p class="mt-1 text-xs text-red-700">{{ form.due_date.errors|join:", " }}</p>{% endif %}
+        </div>
+      </div>
+
+      <div>
+        <label for="{{ form.purpose.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+          {{ form.purpose.label }} <span aria-hidden="true" class="text-red-600">*</span>
+        </label>
+        {{ form.purpose }}
+        {% if form.purpose.errors %}<p class="mt-1 text-xs text-red-700">{{ form.purpose.errors|join:", " }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label for="{{ form.notes.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+          {{ form.notes.label }}
+        </label>
+        {{ form.notes }}
+        {% if form.notes.errors %}<p class="mt-1 text-xs text-red-700">{{ form.notes.errors|join:", " }}</p>{% endif %}
+      </div>
+    </fieldset>
+
+    <div class="flex items-center justify-end gap-3">
+      <a href="{% url 'loans:loan_list' %}" class="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 border border-slate-300 bg-white hover:bg-slate-50">Batal</a>
+      <button type="submit" class="px-5 py-2.5 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">Kirim Pengajuan Peminjaman</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    const search = document.getElementById('asset-filter-input');
+    const items = document.querySelectorAll('#asset-checklist .asset-option');
+    if (search && items.length) {
+      search.addEventListener('input', () => {
+        const term = search.value.trim().toLowerCase();
+        items.forEach((el) => {
+          el.classList.toggle('hidden', Boolean(term && !el.dataset.search.includes(term)));
+        });
+      });
+    }
+  })();
+</script>
+{% endblock %}

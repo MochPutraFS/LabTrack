@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% load labtrack_tags %}
+
+{% block title %}{{ loan.loan_number }} — Detail Peminjaman{% endblock %}
+{% block page_heading %}Sirkulasi / {{ loan.loan_number }}{% endblock %}
+
+{% block content %}
+<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <a href="{% url 'loans:loan_list' %}" class="text-xs font-medium text-slate-500 hover:text-teal-700">&larr; Kembali ke Daftar Peminjaman</a>
+    <div class="flex flex-wrap items-center gap-2.5 mt-1">
+      <h1 class="text-2xl font-semibold text-slate-800 font-mono-num tracking-tight">{{ loan.loan_number }}</h1>
+      {% status_badge loan.loan_channel loan.get_loan_channel_display %}
+      {% status_badge loan.status loan.get_status_display %}
+    </div>
+    <p class="text-xs text-slate-500 mt-1">Dibuat pada {{ loan.created_at|date:"d M Y H:i" }}</p>
+  </div>
+</div>
+
+{% if loan.status == 'REJECTED' and loan.rejection_reason %}
+<div role="alert" class="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+  <strong>Pengajuan Ditolak</strong>
+  <p class="mt-0.5 text-xs text-red-800">Alasan: {{ loan.rejection_reason }}</p>
+</div>
+{% endif %}
+
+{% if loan.status == 'OVERDUE' %}
+<div role="alert" class="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+  <strong>Peminjaman Melewati Batas Waktu (Terlambat)</strong>
+  <p class="mt-0.5 text-xs text-red-800">Jatuh tempo pengembalian pada {{ loan.due_date|date:"d M Y" }}. Segera lakukan penagihan dan proses pengembalian aset.</p>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+  <!-- Left Column (8 cols): Loan Info & Borrowed Items -->
+  <div class="lg:col-span-8 space-y-6">
+    <div class="bg-white border border-slate-200 rounded-xl p-6">
+      <h2 class="text-base font-semibold text-slate-800 mb-4">Informasi Transaksi Peminjaman</h2>
+      <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+        <div>
+          <dt class="text-xs text-slate-500">Nama Peminjam</dt>
+          <dd class="font-medium text-slate-800 mt-0.5">
+            {{ loan.borrower_name }}
+            {% if not loan.borrower_user %}
+              <span class="ml-1 text-[11px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">Tanpa Akun</span>
+            {% endif %}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs text-slate-500">NIM / NIP</dt>
+          <dd class="font-mono-num font-medium text-slate-800 mt-0.5">{{ loan.borrower_identifier }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs text-slate-500">No. Kontak</dt>
+          <dd class="font-medium text-slate-800 mt-0.5">{{ loan.borrower_contact }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs text-slate-500">Jalur Peminjaman</dt>
+          <dd class="mt-0.5">{% status_badge loan.loan_channel loan.get_loan_channel_display %}</dd>
+        </div>
+        <div>
+          <dt class="text-xs text-slate-500">Tanggal Pinjam</dt>
+          <dd class="font-mono-num font-medium text-slate-800 mt-0.5">{{ loan.borrow_date|date:"d M Y" }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs text-slate-500">Jatuh Tempo Kembali</dt>
+          <dd class="font-mono-num font-medium {% if loan.status == 'OVERDUE' %}text-red-700{% else %}text-slate-800{% endif %} mt-0.5">{{ loan.due_date|date:"d M Y" }}</dd>
+        </div>
+      </dl>
+
+      <div class="mt-4 pt-4 border-t border-slate-200">
+        <span class="block text-xs text-slate-500 mb-1">Tujuan / Keperluan</span>
+        <p class="text-sm text-slate-800 whitespace-pre-line">{{ loan.purpose }}</p>
+      </div>
+
+      {% if loan.notes %}
+      <div class="mt-4 pt-4 border-t border-slate-200">
+        <span class="block text-xs text-slate-500 mb-1">Catatan Tambahan</span>
+        <p class="text-sm text-slate-700 whitespace-pre-line">{{ loan.notes }}</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Loan Items Table -->
+    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+        <h2 class="text-base font-semibold text-slate-800">Daftar Aset Dipinjam ({{ items|length }} Unit)</h2>
+      </div>
+      <div class="table-wrapper" tabindex="0" role="region" aria-label="Daftar aset dalam peminjaman">
+        <table class="w-full text-left border-collapse">
+          <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+            <tr>
+              <th class="px-4 py-3">Aset</th>
+              <th class="px-4 py-3">Lokasi</th>
+              <th class="px-4 py-3">Kondisi Keluar</th>
+              <th class="px-4 py-3">Kondisi Kembali</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 text-sm">
+            {% for item in items %}
+            <tr>
+              <td class="px-4 py-3">
+                <a href="{% url 'inventory:asset_detail' item.asset.pk %}" class="font-medium text-slate-800 hover:text-teal-700 block">{{ item.asset.name }}</a>
+                <span class="text-xs font-mono-num text-slate-500">{{ item.asset.asset_code }} &middot; {{ item.asset.category.name }}</span>
+              </td>
+              <td class="px-4 py-3 text-xs text-slate-600 whitespace-nowrap">{{ item.asset.location.code }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">{% status_badge item.condition_on_checkout item.get_condition_on_checkout_display %}</td>
+              <td class="px-4 py-3">
+                {% if item.condition_on_return %}
+                  {% status_badge item.condition_on_return item.get_condition_on_return_display %}
+                  {% if item.return_notes %}
+                    <p class="text-xs text-slate-500 mt-1">{{ item.return_notes }}</p>
+                  {% endif %}
+                {% else %}
+                  <span class="text-xs text-slate-400">Belum dikembalikan</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column (4 cols): Timeline & Actions -->
+  <div class="lg:col-span-4 space-y-6">
+    {% if can_approve or can_reject or can_handover or can_return or can_cancel %}
+    <div class="bg-white border border-slate-200 rounded-xl p-5 space-y-2.5">
+      <h2 class="text-base font-semibold text-slate-800 mb-2">Aksi Transaksi</h2>
+
+      {% if can_approve %}
+      <form method="post" action="{% url 'loans:loan_approve' loan.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="handover_now" value="1">
+        <button type="submit" class="w-full py-2.5 px-4 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+          Setujui &amp; Serahkan Langsung
+        </button>
+      </form>
+      <form method="post" action="{% url 'loans:loan_approve' loan.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="w-full py-2.5 px-4 rounded-lg text-sm font-medium text-teal-800 bg-teal-50 border border-teal-200 hover:bg-teal-100 transition-colors">
+          Setujui Saja (Ambil Nanti)
+        </button>
+      </form>
+      {% endif %}
+
+      {% if can_handover %}
+      <form method="post" action="{% url 'loans:loan_handover' loan.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="w-full py-2.5 px-4 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+          Konfirmasi Serah Terima Barang
+        </button>
+      </form>
+      {% endif %}
+
+      {% if can_return %}
+      <a href="{% url 'loans:loan_return' loan.pk %}" class="block w-full text-center py-2.5 px-4 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+        Proses Pengembalian &amp; Inspeksi
+      </a>
+      {% endif %}
+
+      {% if can_reject %}
+      <button type="button" command="show-modal" commandfor="reject-loan-dialog" class="w-full py-2.5 px-4 rounded-lg text-sm font-medium text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors">
+        Tolak Pengajuan
+      </button>
+      {% endif %}
+
+      {% if can_cancel %}
+      <button type="button" command="show-modal" commandfor="cancel-loan-dialog" class="w-full py-2.5 px-4 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors">
+        Batalkan Peminjaman
+      </button>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Processing Metadata -->
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+      <h2 class="text-base font-semibold text-slate-800 mb-3">Riwayat Pemrosesan</h2>
+      <dl class="space-y-2.5 text-sm">
+        <div class="flex justify-between gap-2">
+          <dt class="text-slate-500">Status Saat Ini</dt>
+          <dd>{% status_badge loan.status loan.get_status_display %}</dd>
+        </div>
+        <div class="flex justify-between gap-2">
+          <dt class="text-slate-500">Diproses Oleh</dt>
+          <dd class="font-medium text-slate-800 text-right">
+            {% if loan.processed_by %}{{ loan.processed_by.full_name|default:loan.processed_by.username }}{% else %}-{% endif %}
+          </dd>
+        </div>
+        <div class="flex justify-between gap-2">
+          <dt class="text-slate-500">Waktu Serah Terima</dt>
+          <dd class="font-mono-num text-xs text-slate-700">
+            {% if loan.handed_over_at %}{{ loan.handed_over_at|date:"d M Y H:i" }}{% else %}-{% endif %}
+          </dd>
+        </div>
+        <div class="flex justify-between gap-2">
+          <dt class="text-slate-500">Waktu Pengembalian</dt>
+          <dd class="font-mono-num text-xs text-slate-700">
+            {% if loan.returned_at %}{{ loan.returned_at|date:"d M Y H:i" }}{% else %}-{% endif %}
+          </dd>
+        </div>
+        <div class="flex justify-between gap-2">
+          <dt class="text-slate-500">Diterima Kembali Oleh</dt>
+          <dd class="font-medium text-slate-800 text-right">
+            {% if loan.received_by %}{{ loan.received_by.full_name|default:loan.received_by.username }}{% else %}-{% endif %}
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </div>
+</div>
+
+{% if can_reject and reject_form %}
+<dialog id="reject-loan-dialog" closedby="any" aria-labelledby="reject-dialog-title" class="lt-dialog">
+  <div class="p-6">
+    <h1 id="reject-dialog-title" class="text-base font-semibold text-red-800">Tolak Pengajuan {{ loan.loan_number }}?</h1>
+    <p class="text-xs text-slate-500 mt-1">Alasan penolakan wajib diisi agar peminjam mengetahui tindak lanjutnya.</p>
+    <form method="post" action="{% url 'loans:loan_reject' loan.pk %}" class="mt-4 space-y-3.5">
+      {% csrf_token %}
+      <div>
+        <label for="{{ reject_form.rejection_reason.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
+          {{ reject_form.rejection_reason.label }} <span aria-hidden="true" class="text-red-600">*</span>
+        </label>
+        {{ reject_form.rejection_reason }}
+      </div>
+      <div class="pt-2 flex justify-end gap-2">
+        <button type="button" command="close" commandfor="reject-loan-dialog" autofocus class="px-3.5 py-2 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50">Batal</button>
+        <button type="submit" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-700 hover:bg-red-800">Ya, Tolak Pengajuan</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+{% endif %}
+
+{% if can_cancel %}
+<dialog id="cancel-loan-dialog" closedby="any" aria-labelledby="cancel-dialog-title" class="lt-dialog">
+  <div class="p-6">
+    <h1 id="cancel-dialog-title" class="text-base font-semibold text-slate-800">Batalkan Peminjaman {{ loan.loan_number }}?</h1>
+    <p class="text-sm text-slate-600 mt-1.5">Transaksi yang dibatalkan tidak dapat dibuka kembali. Anda perlu membuat pengajuan baru jika masih membutuhkan aset.</p>
+    <form method="post" action="{% url 'loans:loan_cancel' loan.pk %}" class="mt-5 flex justify-end gap-2">
+      {% csrf_token %}
+      <button type="button" command="close" commandfor="cancel-loan-dialog" autofocus class="px-3.5 py-2 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50">Kembali</button>
+      <button type="submit" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-slate-700 hover:bg-slate-800">Ya, Batalkan</button>
+    </form>
+  </div>
+</dialog>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,27 @@
+{% if messages %}
+<div class="no-print space-y-2 mb-5" role="status" aria-live="polite">
+  {% for message in messages %}
+    {% if "error" in message.tags %}
+      <div class="flex items-start justify-between gap-3 px-4 py-3 rounded-lg text-sm border" style="background-color:#FEF2F2;color:#991B1B;border-color:#FECACA;">
+        <span>{{ message }}</span>
+        <button type="button" onclick="this.parentElement.remove()" class="text-red-700 hover:text-red-900 font-semibold leading-none" aria-label="Tutup pesan">&times;</button>
+      </div>
+    {% elif "warning" in message.tags %}
+      <div class="flex items-start justify-between gap-3 px-4 py-3 rounded-lg text-sm border" style="background-color:#FFFBEB;color:#92400E;border-color:#FDE68A;">
+        <span>{{ message }}</span>
+        <button type="button" onclick="this.parentElement.remove()" class="text-amber-800 hover:text-amber-950 font-semibold leading-none" aria-label="Tutup pesan">&times;</button>
+      </div>
+    {% elif "success" in message.tags %}
+      <div class="flex items-start justify-between gap-3 px-4 py-3 rounded-lg text-sm border" style="background-color:#ECFDF5;color:#065F46;border-color:#A7F3D0;">
+        <span>{{ message }}</span>
+        <button type="button" onclick="this.parentElement.remove()" class="text-emerald-800 hover:text-emerald-950 font-semibold leading-none" aria-label="Tutup pesan">&times;</button>
+      </div>
+    {% else %}
+      <div class="flex items-start justify-between gap-3 px-4 py-3 rounded-lg text-sm border" style="background-color:#EFF6FF;color:#1E40AF;border-color:#BFDBFE;">
+        <span>{{ message }}</span>
+        <button type="button" onclick="this.parentElement.remove()" class="text-blue-800 hover:text-blue-950 font-semibold leading-none" aria-label="Tutup pesan">&times;</button>
+      </div>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endif %}

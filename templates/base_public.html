@@ -1,0 +1,58 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}LabTrack{% endblock %} — LabTrack</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            canvas: '#F7F8FA',
+            surface: '#FFFFFF',
+            subtle: '#F1F5F9',
+            muted: '#E2E8F0',
+            brand: {
+              teal: '#0F766E',
+              tealHover: '#115E59',
+              tealSoft: '#CCFBF1',
+              slate: '#334155',
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <link rel="stylesheet" href="{% static 'css/custom.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-canvas text-slate-800 antialiased min-h-screen flex flex-col">
+  <header class="w-full py-5 px-4 flex justify-center">
+    <a href="{% if user.is_authenticated %}{% url 'inventory:asset_list' %}{% else %}{% url 'accounts:login' %}{% endif %}" class="inline-flex items-center gap-2.5 group">
+      <span class="w-9 h-9 rounded-lg bg-teal-700 text-white flex items-center justify-center font-bold text-base">LT</span>
+      <span class="text-left">
+        <span class="block text-base font-bold text-slate-800 leading-tight group-hover:text-teal-700 transition-colors">LabTrack</span>
+        <span class="block text-xs text-slate-500">Inventaris &amp; Pemeliharaan Lab</span>
+      </span>
+    </a>
+  </header>
+
+  <main class="flex-1 flex flex-col items-center justify-center px-4 pb-10">
+    <div class="w-full max-w-lg mb-4">
+      {% include "partials/messages.html" %}
+    </div>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="py-4 text-center text-xs text-slate-400">
+    LabTrack &middot; Sistem Manajemen Aset Laboratorium
+  </footer>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
