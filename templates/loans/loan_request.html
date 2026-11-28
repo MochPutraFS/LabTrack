@@ -45,16 +45,19 @@
 
     <!-- Asset Selection -->
     <fieldset class="bg-white border border-slate-200 rounded-xl p-5">
-      <legend class="text-sm font-semibold text-slate-800 px-1">1. Pemilihan Aset Tersedia <span aria-hidden="true" class="text-red-600">*</span></legend>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <legend class="text-sm font-semibold text-slate-800 px-1">1. Pemilihan Aset Tersedia <span aria-hidden="true" class="text-red-600">*</span></legend>
+        <span id="request-selected-count" role="status" aria-atomic="true" class="text-xs font-medium px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200">0 aset dipilih</span>
+      </div>
       <p class="text-xs text-slate-500 mt-1 mb-3">Hanya menampilkan aset aktif berstatus <strong>Tersedia</strong> dan tidak Rusak Berat.</p>
 
       {% if available_assets %}
       <div class="mb-3">
         <label for="asset-filter-input" class="visually-hidden">Cari aset tersedia</label>
-        <input type="search" id="asset-filter-input" placeholder="Ketik kode, nama aset, kategori, atau lokasi untuk menyaring..." autocomplete="off" autocorrect="off" spellcheck="false" class="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-800 placeholder:text-slate-400">
+        <input type="search" id="asset-filter-input" placeholder="Cari kode, nama aset, atau lokasi..." autocomplete="off" autocorrect="off" spellcheck="false" class="w-full min-h-11 sm:min-h-0 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-800 placeholder:text-slate-400">
       </div>
 
-      <div id="asset-checklist" class="max-h-72 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-lg">
+      <div id="asset-checklist" class="md:max-h-72 md:overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-lg">
         {% for asset in available_assets %}
         <label class="asset-option flex items-start gap-3 px-3.5 py-2.5 hover:bg-slate-50 cursor-pointer" data-search="{{ asset.asset_code|lower }} {{ asset.name|lower }} {{ asset.category.name|lower }} {{ asset.location.code|lower }} {{ asset.location.name|lower }}">
           <input type="checkbox" name="assets" value="{{ asset.pk }}" {% if asset.pk|stringformat:"s" in selected_asset_ids %}checked{% endif %} class="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-600">
@@ -130,6 +133,16 @@
   (function () {
     const search = document.getElementById('asset-filter-input');
     const items = document.querySelectorAll('#asset-checklist .asset-option');
+    const countBadge = document.getElementById('request-selected-count');
+    const checkboxes = document.querySelectorAll('#asset-checklist input[name="assets"]');
+    const updateCount = () => {
+      if (!countBadge) return;
+      const n = Array.from(checkboxes).filter((cb) => cb.checked).length;
+      countBadge.textContent = n + ' aset dipilih';
+    };
+    checkboxes.forEach((cb) => cb.addEventListener('change', updateCount));
+    updateCount();
+
     if (search && items.length) {
       search.addEventListener('input', () => {
         const term = search.value.trim().toLowerCase();

@@ -233,11 +233,11 @@
       <p class="mt-2 font-mono-num text-xs font-semibold text-slate-700">{{ asset.asset_code }}</p>
       <div class="mt-4 flex flex-col gap-2">
         {% if user.is_staff_lab %}
-        <a href="{% url 'inventory:asset_qr_download' asset.pk %}" class="w-full py-2 px-3 rounded-lg text-xs font-medium text-white bg-slate-700 hover:bg-slate-800 transition-colors">
+        <a href="{% url 'inventory:asset_qr_download' asset.pk %}" class="w-full inline-flex items-center justify-center min-h-11 sm:min-h-0 py-2 px-3 rounded-lg text-xs font-medium text-white bg-slate-700 hover:bg-slate-800 transition-colors">
           Unduh QR Code (PNG)
         </a>
         {% endif %}
-        <a href="{% url 'asset_qr_scan' asset.asset_code %}" target="_blank" rel="noopener" class="w-full py-2 px-3 rounded-lg text-xs font-medium text-teal-700 bg-teal-50 hover:bg-teal-100 transition-colors">
+        <a href="{% url 'asset_qr_scan' asset.asset_code %}" target="_blank" rel="noopener" class="w-full inline-flex items-center justify-center min-h-11 sm:min-h-0 py-2 px-3 rounded-lg text-xs font-medium text-teal-700 bg-teal-50 hover:bg-teal-100 transition-colors">
           Buka Halaman Scan Publik
         </a>
       </div>

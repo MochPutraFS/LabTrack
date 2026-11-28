@@ -4,8 +4,8 @@
 {% block page_heading %}Inventaris / {% if is_edit %}Edit {{ asset.asset_code }}{% else %}Tambah Aset{% endif %}{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl">
-  <div class="mb-5 flex items-center justify-between">
+<div class="max-w-3xl mx-auto">
+  <div class="mb-5 flex items-start justify-between gap-3">
     <div>
       <h1 class="text-2xl font-semibold text-slate-800 tracking-tight">
         {% if is_edit %}Edit Aset: {{ asset.asset_code }}{% else %}Registrasi Aset Laboratorium{% endif %}
@@ -14,11 +14,11 @@
         {% if is_edit %}Perbarui informasi master data aset.{% else %}QR Code dan riwayat lokasi awal akan dibuat otomatis saat disimpan.{% endif %}
       </p>
     </div>
-    <a href="{% if is_edit %}{% url 'inventory:asset_detail' asset.pk %}{% else %}{% url 'inventory:asset_list' %}{% endif %}" class="text-sm text-slate-600 hover:text-slate-900">&larr; Kembali</a>
+    <a href="{% if is_edit %}{% url 'inventory:asset_detail' asset.pk %}{% else %}{% url 'inventory:asset_list' %}{% endif %}" class="whitespace-nowrap shrink-0 inline-flex items-center min-h-11 sm:min-h-0 text-sm text-slate-600 hover:text-slate-900">&larr; Kembali</a>
   </div>
 
   <div class="bg-white border border-slate-200 rounded-xl p-6">
-    <form method="post" enctype="multipart/form-data" class="space-y-5">
+    <form method="post" enctype="multipart/form-data" class="space-y-6">
       {% csrf_token %}
 
       {% if form.non_field_errors %}
@@ -27,22 +27,63 @@
         </div>
       {% endif %}
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {% for field in form %}
-          <div class="{% if field.name in 'name,specifications,photo' %}sm:col-span-2{% endif %}">
-            <label for="{{ field.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1.5">
-              {{ field.label }}{% if field.field.required %} <span aria-hidden="true" class="text-red-600">*</span>{% endif %}
-            </label>
-            {{ field }}
-            {% if field.help_text %}<p class="mt-1 text-xs text-slate-500">{{ field.help_text }}</p>{% endif %}
-            {% if field.errors %}<p class="mt-1 text-xs text-red-700">{{ field.errors.0 }}</p>{% endif %}
-          </div>
-        {% endfor %}
-      </div>
+      <fieldset class="space-y-4">
+        <legend class="text-sm font-semibold text-slate-800 pb-2 border-b border-slate-100 w-full">1. Identitas &amp; Penempatan</legend>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {% for field in form %}
+            {% if field.name in 'asset_code,name,category,location,brand,model_name,serial_number' %}
+              <div class="{% if field.name in 'asset_code,name,serial_number' %}sm:col-span-2{% endif %}">
+                <label for="{{ field.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1.5">
+                  {{ field.label }}{% if field.field.required %} <span aria-hidden="true" class="text-red-600">*</span>{% endif %}
+                </label>
+                {{ field }}
+                {% if field.help_text %}<p class="mt-1 text-xs text-slate-500">{{ field.help_text }}</p>{% endif %}
+                {% if field.errors %}<p class="mt-1 text-xs text-red-700">{{ field.errors.0 }}</p>{% endif %}
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </fieldset>
+
+      <fieldset class="space-y-4">
+        <legend class="text-sm font-semibold text-slate-800 pb-2 border-b border-slate-100 w-full">2. Perolehan &amp; Penyusutan</legend>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {% for field in form %}
+            {% if field.name in 'acquisition_date,acquisition_cost,useful_life_years,salvage_value' %}
+              <div>
+                <label for="{{ field.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1.5">
+                  {{ field.label }}{% if field.field.required %} <span aria-hidden="true" class="text-red-600">*</span>{% endif %}
+                </label>
+                {{ field }}
+                {% if field.help_text %}<p class="mt-1 text-xs text-slate-500">{{ field.help_text }}</p>{% endif %}
+                {% if field.errors %}<p class="mt-1 text-xs text-red-700">{{ field.errors.0 }}</p>{% endif %}
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </fieldset>
+
+      <fieldset class="space-y-4">
+        <legend class="text-sm font-semibold text-slate-800 pb-2 border-b border-slate-100 w-full">3. Kondisi, Status &amp; Lampiran</legend>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {% for field in form %}
+            {% if field.name in 'condition,status,photo,specifications' %}
+              <div class="{% if field.name in 'photo,specifications' %}sm:col-span-2{% endif %}">
+                <label for="{{ field.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1.5">
+                  {{ field.label }}{% if field.field.required %} <span aria-hidden="true" class="text-red-600">*</span>{% endif %}
+                </label>
+                {{ field }}
+                {% if field.help_text %}<p class="mt-1 text-xs text-slate-500">{{ field.help_text }}</p>{% endif %}
+                {% if field.errors %}<p class="mt-1 text-xs text-red-700">{{ field.errors.0 }}</p>{% endif %}
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </fieldset>
 
       <div class="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
-        <a href="{% if is_edit %}{% url 'inventory:asset_detail' asset.pk %}{% else %}{% url 'inventory:asset_list' %}{% endif %}" class="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50">Batal</a>
-        <button type="submit" class="px-5 py-2.5 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+        <a href="{% if is_edit %}{% url 'inventory:asset_detail' asset.pk %}{% else %}{% url 'inventory:asset_list' %}{% endif %}" class="inline-flex items-center min-h-11 sm:min-h-0 px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50">Batal</a>
+        <button type="submit" class="inline-flex items-center min-h-11 sm:min-h-0 px-5 py-2.5 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
           {% if is_edit %}Simpan Perubahan{% else %}Simpan &amp; Buat QR{% endif %}
         </button>
       </div>

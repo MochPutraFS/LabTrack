@@ -11,10 +11,10 @@
     <p class="text-sm text-slate-500 mt-0.5">Pantau status peminjaman aset laboratorium Anda atau telusuri katalog peralatan yang tersedia.</p>
   </div>
   <div class="flex flex-wrap items-center gap-2">
-    <a href="{% url 'inventory:asset_list' %}" class="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors">
+    <a href="{% url 'inventory:asset_list' %}" class="inline-flex items-center min-h-11 sm:min-h-0 px-4 py-2 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors">
       Telusuri Katalog ({{ kpi.available_assets }} Tersedia)
     </a>
-    <a href="{% url 'loans:loan_request' %}" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
+    <a href="{% url 'loans:loan_request' %}" class="inline-flex items-center min-h-11 sm:min-h-0 px-4 py-2 rounded-lg text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 transition-colors">
       Cari &amp; Ajukan Peminjaman Aset
     </a>
   </div>
@@ -47,7 +47,33 @@
   </div>
 
   {% if recent_loans %}
-  <div tabindex="0" role="region" aria-labelledby="borrower-loans-heading" class="table-wrapper">
+  <!-- Mobile Card View -->
+  <div class="md:hidden divide-y divide-slate-200">
+    {% for loan in recent_loans %}
+    <article class="p-4 space-y-2">
+      <div class="flex items-start justify-between gap-2">
+        <a href="{% url 'loans:loan_detail' loan.pk %}" class="font-mono-num font-semibold text-teal-800 hover:underline">{{ loan.loan_number }}</a>
+        {% status_badge loan.loan_channel loan.get_loan_channel_display %}
+      </div>
+      <div class="text-xs text-slate-700 space-y-0.5">
+        {% for item in loan.items.all %}
+          <p>{{ item.asset.asset_code }} — {{ item.asset.name }}</p>
+        {% endfor %}
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+        <span class="font-mono-num text-xs text-slate-600">{{ loan.borrow_date|date:"d M Y" }} s.d. {{ loan.due_date|date:"d M Y" }}</span>
+        {% if loan.is_overdue %}
+          {% status_badge "OVERDUE" "Terlambat" %}
+        {% else %}
+          {% status_badge loan.status loan.get_status_display %}
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+
+  <!-- Desktop Table View -->
+  <div tabindex="0" role="region" aria-labelledby="borrower-loans-heading" class="hidden md:block table-wrapper">
     <table class="text-sm text-left">
       <caption class="visually-hidden">Daftar transaksi peminjaman terbaru milik Anda</caption>
       <thead class="bg-slate-50 text-xs font-semibold text-slate-600 uppercase tracking-wider border-b border-slate-200">

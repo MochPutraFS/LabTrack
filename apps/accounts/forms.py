@@ -37,7 +37,7 @@ class LoginForm(AuthenticationForm):
         strip=False,
         widget=forms.PasswordInput(
             attrs={
-                "class": INPUT_CLASS,
+                "class": INPUT_CLASS + " pr-11",
                 "placeholder": "Masukkan kata sandi",
                 "autocomplete": "current-password",
             }

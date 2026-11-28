@@ -136,6 +136,24 @@ dialog.lt-dialog::backdrop {
   border-block-end: 3px solid var(--brand-teal);
 }
 
+@media (max-width: 639px) {
+  .lt-tablist {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow-x: visible;
+    gap: 0;
+    padding-inline: 0;
+  }
+
+  .lt-tab {
+    text-align: center;
+    min-height: 44px;
+    padding: 0.625rem 0.5rem;
+    font-size: 0.8125rem;
+    white-space: normal;
+  }
+}
+
 /* QR Print Sheet styling */
 @media print {
   @page {

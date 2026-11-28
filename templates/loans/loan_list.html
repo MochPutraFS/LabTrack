@@ -32,16 +32,16 @@
 
 <search class="block mb-5">
   <form method="get" action="{% url 'loans:loan_list' %}" class="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-    <input type="search" name="q" value="{{ filters.q }}" placeholder="Cari no. pinjaman, peminjam, NIM, kode aset..." aria-label="Cari peminjaman" class="lg:col-span-2 rounded-lg border border-slate-300 px-3.5 py-2 text-sm">
+    <input type="search" name="q" value="{{ filters.q }}" placeholder="Cari no. pinjaman, peminjam, aset..." aria-label="Cari peminjaman" class="lg:col-span-2 min-h-11 sm:min-h-0 rounded-lg border border-slate-300 px-3.5 py-2 text-sm">
 
-    <select name="status" aria-label="Filter status peminjaman" class="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+    <select name="status" aria-label="Filter status peminjaman" class="min-h-11 sm:min-h-0 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
       <option value="">Semua Status</option>
       {% for val, label in statuses %}
         <option value="{{ val }}" {% if filters.status == val %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
 
-    <select name="channel" aria-label="Filter jalur peminjaman" class="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+    <select name="channel" aria-label="Filter jalur peminjaman" class="min-h-11 sm:min-h-0 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
       <option value="">Semua Jalur</option>
       {% for val, label in channels %}
         <option value="{{ val }}" {% if filters.channel == val %}selected{% endif %}>{{ label }}</option>
@@ -49,21 +49,66 @@
     </select>
 
     <div class="flex gap-2">
-      <button type="submit" class="flex-1 px-3.5 py-2 rounded-lg text-sm font-medium text-white bg-slate-700 hover:bg-slate-800">Filter</button>
+      <button type="submit" class="flex-1 min-h-11 sm:min-h-0 px-3.5 py-2 rounded-lg text-sm font-medium text-white bg-slate-700 hover:bg-slate-800">Filter</button>
       {% if filters.q or filters.status or filters.channel %}
-        <a href="{% url 'loans:loan_list' %}" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50">Reset</a>
+        <a href="{% url 'loans:loan_list' %}" class="inline-flex items-center min-h-11 sm:min-h-0 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50">Reset</a>
       {% endif %}
     </div>
   </form>
 </search>
 
 <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
-  <div class="table-wrapper" tabindex="0" role="region" aria-label="Daftar transaksi peminjaman">
+  <!-- Mobile Card View -->
+  <div class="md:hidden divide-y divide-slate-200">
+    {% for loan in page_obj %}
+    <article class="p-4 space-y-2.5">
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0">
+          <a href="{% url 'loans:loan_detail' loan.pk %}" class="font-mono-num font-semibold text-slate-800 hover:text-teal-700 block">{{ loan.loan_number }}</a>
+          <span class="text-xs text-slate-500">{{ loan.created_at|date:"d M Y H:i" }} &middot; {{ loan.item_count }} unit</span>
+        </div>
+        {% status_badge loan.loan_channel loan.get_loan_channel_display %}
+      </div>
+      {% if user.is_staff_lab %}
+      <p class="text-xs text-slate-700">
+        <span class="font-medium">{{ loan.borrower_name }}</span>
+        <span class="font-mono-num text-slate-500">({{ loan.borrower_identifier }})</span>
+      </p>
+      {% endif %}
+      <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <span class="font-mono-num text-slate-600">
+          {{ loan.borrow_date|date:"d M Y" }} &rarr; <strong class="{% if loan.status == 'OVERDUE' %}text-red-700{% else %}text-slate-800{% endif %}">{{ loan.due_date|date:"d M Y" }}</strong>
+        </span>
+        {% status_badge loan.status loan.get_status_display %}
+      </div>
+      <div class="pt-1 flex items-center gap-2">
+        <a href="{% url 'loans:loan_detail' loan.pk %}" class="flex-1 inline-flex items-center justify-center min-h-11 px-3 rounded-lg text-xs font-medium text-teal-700 bg-teal-50 hover:bg-teal-100">Detail</a>
+        {% if user.is_staff_lab and loan.status in 'ACTIVE,OVERDUE' %}
+          <a href="{% url 'loans:loan_return' loan.pk %}" class="flex-1 inline-flex items-center justify-center min-h-11 px-3 rounded-lg text-xs font-medium text-white bg-teal-700 hover:bg-teal-800">Kembalikan</a>
+        {% endif %}
+      </div>
+    </article>
+    {% empty %}
+    <div class="px-4 py-12 text-center">
+      <p class="text-sm font-medium text-slate-700">Belum ada transaksi peminjaman ditemukan.</p>
+      <p class="text-xs text-slate-500 mt-1">Ubah filter pencarian atau buat pengajuan peminjaman baru.</p>
+      <div class="mt-3 flex flex-wrap items-center justify-center gap-2">
+        <a href="{% url 'loans:loan_request' %}" class="inline-flex items-center min-h-11 px-3.5 rounded-lg text-xs font-medium text-white bg-teal-700 hover:bg-teal-800">+ Ajukan Peminjaman Online</a>
+        {% if user.is_staff_lab %}
+          <a href="{% url 'loans:loan_walk_in' %}" class="inline-flex items-center min-h-11 px-3.5 rounded-lg text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200">+ Catat Walk-In</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Desktop Table View -->
+  <div class="hidden md:block table-wrapper" tabindex="0" role="region" aria-label="Daftar transaksi peminjaman">
     <table class="w-full text-left border-collapse">
       <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
         <tr>
           <th class="px-4 py-3">No. Pinjaman</th>
-          <th class="px-4 py-3">Peminjam</th>
+          {% if user.is_staff_lab %}<th class="px-4 py-3">Peminjam</th>{% endif %}
           <th class="px-4 py-3">Jalur</th>
           <th class="px-4 py-3">Jadwal Pinjam</th>
           <th class="px-4 py-3 text-center">Unit</th>
@@ -78,10 +123,12 @@
             <a href="{% url 'loans:loan_detail' loan.pk %}" class="font-mono-num font-semibold text-slate-800 hover:text-teal-700 block">{{ loan.loan_number }}</a>
             <span class="text-xs text-slate-500">{{ loan.created_at|date:"d M Y H:i" }}</span>
           </td>
+          {% if user.is_staff_lab %}
           <td class="px-4 py-3">
             <span class="font-medium text-slate-800 block">{{ loan.borrower_name }}</span>
             <span class="text-xs font-mono-num text-slate-500">{{ loan.borrower_identifier }}</span>
           </td>
+          {% endif %}
           <td class="px-4 py-3 whitespace-nowrap">{% status_badge loan.loan_channel loan.get_loan_channel_display %}</td>
           <td class="px-4 py-3 whitespace-nowrap font-mono-num text-xs text-slate-700">
             <span>{{ loan.borrow_date|date:"d M Y" }}</span>
@@ -100,7 +147,7 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="7" class="px-4 py-12 text-center">
+          <td colspan="{% if user.is_staff_lab %}7{% else %}6{% endif %}" class="px-4 py-12 text-center">
             <p class="text-sm font-medium text-slate-700">Belum ada transaksi peminjaman ditemukan.</p>
             <p class="text-xs text-slate-500 mt-1">Ubah filter pencarian atau buat pengajuan peminjaman baru.</p>
             <div class="mt-3 flex items-center justify-center gap-2">

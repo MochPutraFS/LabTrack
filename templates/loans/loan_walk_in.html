@@ -45,8 +45,8 @@
         <p class="text-xs text-slate-500 mt-1">Pilih akun terdaftar untuk mengisi otomatis kolom di bawah, atau biarkan kosong untuk input manual peminjam tanpa akun.</p>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="sm:col-span-2">
           <label for="{{ form.borrower_name.id_for_label }}" class="block text-xs font-medium text-slate-700 mb-1">
             {{ form.borrower_name.label }} <span aria-hidden="true" class="text-red-600">*</span>
           </label>
@@ -72,16 +72,19 @@
 
     <!-- Section 2: Asset Selection -->
     <fieldset class="bg-white border border-slate-200 rounded-xl p-5">
-      <legend class="text-sm font-semibold text-slate-800 px-1">2. Pemilihan Aset <span aria-hidden="true" class="text-red-600">*</span></legend>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <legend class="text-sm font-semibold text-slate-800 px-1">2. Pemilihan Aset <span aria-hidden="true" class="text-red-600">*</span></legend>
+        <span id="walkin-selected-count" role="status" aria-atomic="true" class="text-xs font-medium px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200">0 aset dipilih</span>
+      </div>
       <p class="text-xs text-slate-500 mt-1 mb-3">Hanya aset berstatus <strong>Tersedia</strong> dan tidak Rusak Berat yang dapat dipinjamkan.</p>
 
       {% if available_assets %}
       <div class="mb-3">
         <label for="walkin-asset-search" class="visually-hidden">Cari aset tersedia</label>
-        <input type="search" id="walkin-asset-search" placeholder="Cari cepat berdasarkan kode aset, nama, kategori, atau lokasi..." autocomplete="off" autocorrect="off" spellcheck="false" class="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-800 placeholder:text-slate-400">
+        <input type="search" id="walkin-asset-search" placeholder="Cari kode, nama aset, atau lokasi..." autocomplete="off" autocorrect="off" spellcheck="false" class="w-full min-h-11 sm:min-h-0 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-800 placeholder:text-slate-400">
       </div>
 
-      <div id="walkin-asset-list" class="max-h-72 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-lg">
+      <div id="walkin-asset-list" class="md:max-h-72 md:overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-lg">
         {% for asset in available_assets %}
         <label class="asset-option flex items-start gap-3 px-3.5 py-2.5 hover:bg-slate-50 cursor-pointer" data-search="{{ asset.asset_code|lower }} {{ asset.name|lower }} {{ asset.category.name|lower }} {{ asset.location.code|lower }} {{ asset.location.name|lower }}">
           <input type="checkbox" name="assets" value="{{ asset.pk }}" {% if asset.pk|stringformat:"s" in selected_asset_ids %}checked{% endif %} class="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-600">
@@ -172,13 +175,27 @@
           nameInput.value = picked.name || '';
           idInput.value = picked.identifier || '';
           contactInput.value = picked.contact || '';
+        } else {
+          nameInput.value = '';
+          idInput.value = '';
+          contactInput.value = '';
         }
       });
     }
 
-    // Fast client-side filter for asset checklist
+    // Live counter & fast client-side filter for asset checklist
     const search = document.getElementById('walkin-asset-search');
     const items = document.querySelectorAll('#walkin-asset-list .asset-option');
+    const countBadge = document.getElementById('walkin-selected-count');
+    const checkboxes = document.querySelectorAll('#walkin-asset-list input[name="assets"]');
+    const updateCount = () => {
+      if (!countBadge) return;
+      const n = Array.from(checkboxes).filter((cb) => cb.checked).length;
+      countBadge.textContent = n + ' aset dipilih';
+    };
+    checkboxes.forEach((cb) => cb.addEventListener('change', updateCount));
+    updateCount();
+
     if (search && items.length) {
       search.addEventListener('input', () => {
         const term = search.value.trim().toLowerCase();

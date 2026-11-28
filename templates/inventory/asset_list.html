@@ -28,23 +28,23 @@
 
 <search class="block mb-5">
   <form method="get" action="{% url 'inventory:asset_list' %}" class="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
-    <input type="search" name="q" value="{{ filters.q }}" placeholder="Cari kode, nama, merek, no. seri..." aria-label="Cari aset" class="lg:col-span-2 rounded-lg border border-slate-300 px-3.5 py-2 text-sm">
+    <input type="search" name="q" value="{{ filters.q }}" placeholder="Cari kode, nama, merek..." aria-label="Cari aset" class="lg:col-span-2 min-h-11 sm:min-h-0 rounded-lg border border-slate-300 px-3.5 py-2 text-sm">
 
-    <select name="category" aria-label="Filter kategori" class="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+    <select name="category" aria-label="Filter kategori" class="min-h-11 sm:min-h-0 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
       <option value="">Semua Kategori</option>
       {% for cat in categories %}
         <option value="{{ cat.pk }}" {% if filters.category == cat.pk|stringformat:"s" %}selected{% endif %}>{{ cat.code }} — {{ cat.name }}</option>
       {% endfor %}
     </select>
 
-    <select name="location" aria-label="Filter lokasi" class="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+    <select name="location" aria-label="Filter lokasi" class="min-h-11 sm:min-h-0 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
       <option value="">Semua Lokasi</option>
       {% for loc in locations %}
         <option value="{{ loc.pk }}" {% if filters.location == loc.pk|stringformat:"s" %}selected{% endif %}>{{ loc.code }} — {{ loc.name }}</option>
       {% endfor %}
     </select>
 
-    <select name="status" aria-label="Filter status" class="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+    <select name="status" aria-label="Filter status" class="min-h-11 sm:min-h-0 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
       <option value="">Semua Status</option>
       {% for val, label in statuses %}
         {% if user.is_staff_lab or val != 'RETIRED' %}
@@ -54,22 +54,61 @@
     </select>
 
     <div class="flex gap-2">
-      <select name="condition" aria-label="Filter kondisi" class="flex-1 min-w-0 rounded-lg border border-slate-300 px-2.5 py-2 text-sm bg-white">
+      <select name="condition" aria-label="Filter kondisi" class="flex-1 min-w-0 min-h-11 sm:min-h-0 rounded-lg border border-slate-300 px-2.5 py-2 text-sm bg-white">
         <option value="">Kondisi</option>
         {% for val, label in conditions %}
           <option value="{{ val }}" {% if filters.condition == val %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
       </select>
-      <button type="submit" class="px-3.5 py-2 rounded-lg text-sm font-medium text-white bg-slate-700 hover:bg-slate-800 shrink-0">Cari</button>
+      <button type="submit" class="min-h-11 sm:min-h-0 px-3.5 py-2 rounded-lg text-sm font-medium text-white bg-slate-700 hover:bg-slate-800 shrink-0">Cari</button>
       {% if filters.q or filters.category or filters.location or filters.status or filters.condition %}
-        <a href="{% url 'inventory:asset_list' %}" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 shrink-0">Reset</a>
+        <a href="{% url 'inventory:asset_list' %}" class="inline-flex items-center min-h-11 sm:min-h-0 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 shrink-0">Reset</a>
       {% endif %}
     </div>
   </form>
 </search>
 
 <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
-  <div class="table-wrapper" tabindex="0" role="region" aria-label="Daftar aset laboratorium">
+  <!-- Mobile Card View -->
+  <div class="md:hidden divide-y divide-slate-200">
+    {% for asset in page_obj %}
+    <article class="p-4 space-y-2.5">
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0">
+          <a href="{% url 'inventory:asset_detail' asset.pk %}" class="font-medium text-slate-800 hover:text-teal-700 block">{{ asset.name }}</a>
+          <p class="text-xs font-mono-num text-slate-500 mt-0.5">{{ asset.asset_code }}{% if asset.brand %} &middot; {{ asset.brand }}{% endif %}</p>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center gap-1.5">
+        {% status_badge asset.status asset.get_status_display %}
+        {% status_badge asset.condition asset.get_condition_display %}
+      </div>
+      <div class="text-xs text-slate-600 flex flex-wrap gap-x-3 gap-y-1">
+        <span>{{ asset.category.name }}</span>
+        <span class="font-mono-num">{{ asset.location.code }} — {{ asset.location.name }}</span>
+      </div>
+      <div class="pt-1 flex items-center justify-between gap-2">
+        {% if user.is_staff_lab %}
+          <span class="font-mono-num text-xs font-medium text-slate-700">{{ asset.acquisition_cost|format_rupiah }}</span>
+        {% else %}
+          <span></span>
+        {% endif %}
+        <a href="{% url 'inventory:asset_detail' asset.pk %}" class="inline-flex items-center justify-center min-h-11 px-4 rounded-lg text-xs font-medium text-teal-700 bg-teal-50 hover:bg-teal-100">Detail</a>
+      </div>
+    </article>
+    {% empty %}
+    <div class="px-4 py-12 text-center">
+      <p class="text-sm font-medium text-slate-700">Tidak ada aset ditemukan.</p>
+      <p class="text-xs text-slate-500 mt-1">Coba ubah kata kunci pencarian atau reset filter Anda.</p>
+      {% if user.is_staff_lab %}
+        <a href="{% url 'inventory:asset_create' %}" class="mt-3 inline-flex items-center min-h-11 px-4 rounded-lg text-xs font-medium text-white bg-teal-700 hover:bg-teal-800">+ Tambah Aset Pertama</a>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Desktop Table View -->
+  <div class="hidden md:block table-wrapper" tabindex="0" role="region" aria-label="Daftar aset laboratorium">
     <table class="w-full text-left border-collapse">
       <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
         <tr>
